@@ -12,7 +12,7 @@ namespace WebValidation
     public partial class Test : IDisposable
     {
         private readonly List<Request> _requestList;
-        private HttpClient _client;
+        private readonly HttpClient _client;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier", Justification = "can't be readonly - json serialization")]
         private Dictionary<string, PerfTarget> Targets = new Dictionary<string, PerfTarget>();
@@ -46,6 +46,7 @@ namespace WebValidation
             _requestList = LoadRequests(fileList);
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "handled in IDispose")]
         HttpClient OpenHttpClient()
         {
             return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
@@ -118,8 +119,6 @@ namespace WebValidation
                 return;
             }
 
-            bool isError = false;
-
             // loop for duration or forever
             while (DateTime.UtcNow < dtMax)
             {
@@ -146,47 +145,15 @@ namespace WebValidation
                         // create the request
                         perfLog = await ExecuteRequest(r).ConfigureAwait(false);
                     }
-                    catch (System.Threading.Tasks.TaskCanceledException tce)
+                    catch (OperationCanceledException oce)
                     {
-                        // request timeout error
-                        string message = tce.Message;
-
-                        if (tce.InnerException != null)
-                        {
-                            message = tce.InnerException.Message;
-                        }
-
-                        Console.WriteLine($"{id}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tTaskCancelledException\t{message}");
-                        if (tce.InnerException != null)
-                        {
-                            Console.WriteLine(tce.InnerException);
-                        }
-                        else
-                        {
-                            Console.WriteLine(tce);
-                        }
-
-                        isError = true;
+                        Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tTaskCancelledException\t{oce.Message}");
                     }
 
                     catch (Exception ex)
                     {
                         // ignore any error and keep processing
-                        Console.WriteLine($"{id}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tWebvException\t{ex.Message}\n{ex}");
-
-                        isError = true;
-                    }
-
-                    // TODO - smoker is hanging here
-                    if (isError)
-                    {
-                        Console.WriteLine("Creating new HttpClient ...");
-                        _client.Dispose();
-                        _client = null;
-                        await Task.Delay(500).ConfigureAwait(false);
-
-                        _client = OpenHttpClient();
-                        isError = false;
+                        Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tWebvException\t{ex.Message}");
                     }
 
                     // increment the index
@@ -236,20 +203,16 @@ namespace WebValidation
                 DateTime dt = DateTime.UtcNow;
 
                 // process the response
-                using (HttpResponseMessage resp = await _client.SendAsync(req).ConfigureAwait(false))
-                {
-                    string body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using HttpResponseMessage resp = await _client.SendAsync(req).ConfigureAwait(false);
+                string body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-                    double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
+                double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
 
-                    // validate the response
-                    string res = ValidateAll(r, resp, body);
+                // validate the response
+                string res = ValidateAll(r, resp, body);
 
-                    // check the performance
-                    perfLog = CreatePerfLog(r, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
-                }
-
-                req.Dispose();
+                // check the performance
+                perfLog = CreatePerfLog(r, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
             }
 
             // log the test

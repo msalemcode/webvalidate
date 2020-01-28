@@ -24,7 +24,10 @@ namespace WebValidation
 
             if (disposing)
             {
-                _client.Dispose();
+                if (_client != null)
+                {
+                    _client.Dispose();
+                }
             }
 
             // Free any unmanaged objects
