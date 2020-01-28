@@ -3,44 +3,37 @@ using Microsoft.AspNetCore.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Helium
+namespace WebValidationTest
 {
     public sealed class App
     {
-        const string _durationParameterError = "Invalid duration (seconds) parameter: {0}\n";
-        const string _fileNotFoundError = "File not found: {0}";
-        const string _sleepParameterError = "Invalid sleep (milliseconds) parameter: {0}\n";
-        const string _threadsParameterError = "Invalid number of concurrent threads parameter: {0}\n";
-        const string _maxAgeParameterError = "Invalid maximum metrics age parameter: {0}\n";
+        // public properties
+        public static WebValidation.Test WebV { get; set; } = null;
+        public static Config Config { get; } = new Config();
+        public static DateTime StartTime { get; } = DateTime.UtcNow;
+        public static Metrics Metrics { get; } = new Metrics();
+        public static List<Task> Tasks { get; } = new List<Task>();
+        public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
 
-        public static readonly Config Config = new Config();
-        public static readonly DateTime StartTime = DateTime.UtcNow;
-        public static readonly Metrics Metrics = new Metrics();
-
-        // necessary for private build - do not delete
-        public static readonly List<TaskRunner> TaskRunners = new List<TaskRunner>();
-        public static Smoker.Test Smoker { get; set; } = null;
-
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "null is valid")]
         public static void Main(string[] args)
         {
             ProcessEnvironmentVariables();
 
-#pragma warning disable CA1062 // null is valid
             ProcessCommandArgs(args);
-#pragma warning restore CA1062
 
             ValidateParameters();
 
-            Smoker = new Smoker.Test(Config.FileList, Config.Host);
+            // create the test
+            WebV = new WebValidation.Test(Config.FileList, Config.Host);
 
             // run one test iteration
-            if (!Config.RunLoop && !Config.RunWeb)
+            if (!Config.RunLoop)
             {
-                if (!Smoker.RunOnce().Result)
+                if (!WebV.RunOnce().Result)
                 {
                     Environment.Exit(-1);
                 }
@@ -48,94 +41,93 @@ namespace Helium
                 return;
             }
 
-            IWebHost host = null;
-
-            // configure web server
-            if (Config.RunWeb)
-            {
-                // use the default web host builder + startup
-                IWebHostBuilder builder = WebHost.CreateDefaultBuilder(args)
-                    .UseKestrel()
-                    .UseStartup<Startup>()
-                    .UseUrls("http://*:4122/");
-
-                // build the host
-                host = builder.Build();
-            }
-
-            using CancellationTokenSource ctCancel = new CancellationTokenSource();
             // setup ctl c handler
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
             {
                 e.Cancel = true;
-                ctCancel.Cancel();
+                TokenSource.Cancel();
 
-                Console.WriteLine("Ctl-C Pressed - Starting shutdown ...");
+                Console.WriteLine(Constants.ControlCMessage);
 
                 // give threads a chance to shutdown
-                Thread.Sleep(500);
+                Task.Delay(500);
 
                 // end the app
                 Environment.Exit(0);
             };
 
-            // run tests in config.RunLoop
-            if (Config.RunLoop)
-            {
-                TaskRunner tr;
-
-                for (int i = 0; i < Config.Threads; i++)
-                {
-                    tr = new TaskRunner { TokenSource = ctCancel };
-
-                    tr.Task = Smoker.RunLoop(i, App.Config, tr.TokenSource.Token);
-
-                    TaskRunners.Add(tr);
-                }
-            }
-
-            // run the web server
             if (Config.RunWeb)
             {
-                try
-                {
-                    Console.WriteLine($"Version: {Helium.Version.AssemblyVersion}\nThreads: {Config.Threads}\nSleep: {Config.SleepMs}\nRandomize: {Config.Random}");
-
-                    host.Run();
-                    Console.WriteLine("Web server shutdown");
-                }
-#pragma warning disable CA1031 // valid
-                catch (Exception ex)
-#pragma warning restore CA1031
-                {
-                    Console.WriteLine($"Web Server Exception\n{ex}");
-                }
-
-                return;
+                RunWeb(args, TokenSource.Token);
             }
-
-            // run the task loop
-            if (Config.RunLoop && TaskRunners.Count > 0)
+            else if (Config.RunLoop)
             {
-                // Wait for all tasks to complete
-                List<Task> tasks = new List<Task>();
-
-                foreach (TaskRunner trun in TaskRunners)
-                {
-                    tasks.Add(trun.Task);
-                }
-
-                // wait for ctrl c
-                Task.WaitAll(tasks.ToArray());
+                RunLoop(TokenSource.Token);
             }
         }
 
+        /// <summary>
+        /// Run as a web server
+        /// </summary>
+        /// <param name="token">CancellationTokenSource</param>
+        private static void RunWeb(string[] args, CancellationToken token)
+        {
+            IWebHost host;
+
+            // use the default web host builder + startup
+            IWebHostBuilder builder = WebHost.CreateDefaultBuilder(args)
+                .UseKestrel()
+                .UseStartup<Startup>()
+                .UseUrls("http://*:4122/");
+
+            // build the host
+            host = builder.Build();
+
+            // start the test threads
+            for (int i = 0; i < Config.Threads; i++)
+            {
+                Tasks.Add(WebV.RunLoop(i, Config, token));
+            }
+
+            // run the web server
+            try
+            {
+                Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}\nThreads: {Config.Threads}\nSleep: {Config.SleepMs}\nRandomize: {Config.Random}");
+                host.Run();
+                Console.WriteLine("Web server shutdown");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Web Server Exception\n{ex}");
+            }
+        }
+
+        /// <summary>
+        /// Run tests in a loop
+        /// </summary>
+        /// <param name="ctCancel">CancellationTokenSource</param>
+        private static void RunLoop(CancellationToken token)
+        {
+            // start the tests on separate threads
+            for (int i = 0; i < Config.Threads; i++)
+            {
+                Console.WriteLine($"Starting task {i}");
+                Tasks.Add(WebV.RunLoop(i, Config, token));
+            }
+
+            // wait for all tasks to complete or ctl-c
+            Task.WaitAll(Tasks.ToArray());
+        }
+
+        /// <summary>
+        /// Validate env vars and command line have valid values
+        /// </summary>
         private static void ValidateParameters()
         {
             // host is required
             if (string.IsNullOrWhiteSpace(Config.Host))
             {
-                Console.WriteLine("Must specify --host parameter\n");
+                Console.WriteLine(Constants.HostMissingMessage);
                 Usage();
                 Environment.Exit(-1);
             }
@@ -143,7 +135,7 @@ namespace Helium
             // invalid parameter
             if (Metrics.MaxAge < 0)
             {
-                Console.Write(_maxAgeParameterError, Metrics.MaxAge);
+                Console.Write(Constants.MaxAgeParameterError, Metrics.MaxAge);
                 Usage();
                 Environment.Exit(-1);
             }
@@ -161,53 +153,26 @@ namespace Helium
                 }
             }
 
-            // validate parameters
+            // validate additional parameters
             ValidateNonRunloopParameters();
             ValidateRunloopParameters();
             ValidateFileList();
         }
 
-        private static void AddAllJsonFiles()
-        {
-            string dir = "TestFiles";
-
-            // make sure the directory exists
-            if (!Directory.Exists(dir))
-            {
-                dir = "../../../" + dir;
-
-                if (!Directory.Exists(dir))
-                {
-                    Console.WriteLine($"No files found in {dir}");
-                    Environment.Exit(-1);
-                }
-            }
-
-            // clear the list
-            Config.FileList.Clear();
-
-            // get a list of files
-            Config.FileList.AddRange(Directory.GetFiles(dir, "*.json"));
-        }
-
+        /// <summary>
+        /// Validate at least one test file exists
+        /// </summary>
         private static void ValidateFileList()
         {
-
+            // Add the default file if none specified
             if (Config.FileList.Count == 0)
             {
-                Config.FileList.Add("TestFiles/baseline.json");
-                //AddAllJsonFiles();
-            }
-
-            if (Config.FileList.Count == 0)
-            {
-                // exit if no files found
-                Console.WriteLine("No files found");
-                Environment.Exit(-1);
+                Config.FileList.Add(Constants.DefaultTestFile);
             }
 
             string f;
 
+            // check each file in reverse index order
             for (int i = Config.FileList.Count - 1; i >= 0; i--)
             {
                 f = Config.FileList[i];
@@ -220,22 +185,24 @@ namespace Helium
                 }
                 else
                 {
-                    Console.WriteLine(_fileNotFoundError, f);
+                    Console.WriteLine(Constants.FileNotFoundError, f);
                     Config.FileList.RemoveAt(i);
                 }
             }
 
+            // exit if no files found
             if (Config.FileList.Count == 0)
             {
-                // exit if no files found
-                Console.WriteLine("No files found");
+                Console.WriteLine(Constants.NoFilesFoundMessage);
                 Environment.Exit(-1);
             }
         }
 
+        /// <summary>
+        /// Validate the parameters if --runloop not specified
+        /// </summary>
         private static void ValidateNonRunloopParameters()
         {
-            // validate runloop params / set defaults
             if (!Config.RunLoop)
             {
                 // these params require --runloop
@@ -289,19 +256,23 @@ namespace Helium
                 Metrics.MaxAge = 12 * 60 * 60;
             }
 
+            // can't be less than 0
             if (Config.Duration < 0)
             {
-                Console.WriteLine(_durationParameterError, Config.Duration);
+                Console.WriteLine(Constants.DurationParameterError, Config.Duration);
                 Usage();
                 Environment.Exit(-1);
             }
         }
 
+        /// <summary>
+        /// Validate parameters if --runloop specified
+        /// </summary>
         private static void ValidateRunloopParameters()
         {
-            // validate runloop params / set defaults
             if (Config.RunLoop)
             {
+                // -1 means was not specified
                 if (Config.SleepMs == -1)
                 {
                     Config.SleepMs = 1000;
@@ -318,183 +289,187 @@ namespace Helium
                     Config.Threads = 10;
                 }
 
+                // must be > 0
                 if (Config.Threads <= 0)
                 {
-                    Console.WriteLine(_threadsParameterError, Config.Threads);
+                    Console.WriteLine(Constants.ThreadsParameterError, Config.Threads);
                     Usage();
                     Environment.Exit(-1);
                 }
 
+                // must be >= 0
                 if (Config.SleepMs < 0)
                 {
-                    Console.WriteLine(_sleepParameterError, Config.SleepMs);
+                    Console.WriteLine(Constants.SleepParameterError, Config.SleepMs);
                     Usage();
                     Environment.Exit(-1);
                 }
             }
         }
 
+        /// <summary>
+        /// Validate the command line params
+        /// </summary>
+        /// <param name="args">string[]</param>
         private static void ProcessCommandArgs(string[] args)
         {
-            if (args.Length > 0)
+            // show usage
+            if (args == null || args.Length == 0 || args[0] == ArgKeys.Help || args[0] == ArgKeys.HelpShort)
             {
-                // display help
-                if (args[0] == "--help" || args[0] == "-h")
+                Usage();
+                Environment.Exit(0);
+            }
+
+            int i = 0;
+
+            while (i < args.Length)
+            {
+                if (!args[i].StartsWith("--", StringComparison.OrdinalIgnoreCase))
                 {
+                    Console.WriteLine($"\nInvalid argument: {args[i]}\n");
                     Usage();
-                    Environment.Exit(0);
+                    Environment.Exit(-1);
                 }
 
-                int i = 0;
-
-                while (i < args.Length)
+                // handle run loop (--runloop)
+                if (args[i] == ArgKeys.RunLoop)
                 {
-                    if (!args[i].StartsWith("--", StringComparison.OrdinalIgnoreCase))
+                    Config.RunLoop = true;
+                }
+
+                // handle run web (--runweb)
+                else if (args[i] == ArgKeys.RunWeb)
+                {
+                    Config.RunWeb = true;
+                }
+
+                // handle --random
+                else if (args[i] == ArgKeys.Random)
+                {
+                    Config.Random = true;
+                }
+
+                // handle --verbose
+                else if (args[i] == ArgKeys.Verbose)
+                {
+                    Config.Verbose = true;
+                }
+
+                // process all other args in pairs
+                else if (i < args.Length - 1)
+                {
+                    // handle host
+                    if (args[i] == ArgKeys.Host)
                     {
-                        Console.WriteLine($"\nInvalid argument: {args[i]}\n");
-                        Usage();
-                        Environment.Exit(-1);
+                        Config.Host = args[i + 1].Trim();
+                        i++;
                     }
 
-                    // handle run loop (---runloop)
-                    if (args[i] == "--runloop")
+                    // handle input files (-i inputFile.json input2.json input3.json)
+                    else if (i < args.Length - 1 && (args[i] == ArgKeys.Files))
                     {
-                        Config.RunLoop = true;
-                    }
+                        // command line overrides env var
+                        Config.FileList.Clear();
 
-                    // handle run web (---runweb)
-                    else if (args[i] == "--runweb")
-                    {
-                        Config.RunWeb = true;
-                    }
-
-                    // handle --random
-                    else if (args[i] == "--random")
-                    {
-                        Config.Random = true;
-                    }
-
-                    // handle --verbose
-                    else if (args[i] == "--verbose")
-                    {
-                        Config.Verbose = true;
-                    }
-
-                    // process all other args in pairs
-                    else if (i < args.Length - 1)
-                    {
-                        // handle host
-                        if (args[i] == "--host")
+                        // process all file names
+                        while (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.OrdinalIgnoreCase))
                         {
-                            Config.Host = args[i + 1].Trim();
+                            if (!string.IsNullOrEmpty(args[i + 1]))
+                            {
+                                Config.FileList.Add(args[i + 1].Trim());
+                            }
+
+                            i++;
+                        }
+                    }
+
+                    // handle sleep (--sleep config.SleepMs)
+                    else if (args[i] == ArgKeys.Sleep)
+                    {
+                        if (int.TryParse(args[i + 1], out int v))
+                        {
+                            Config.SleepMs = v;
                             i++;
                         }
 
-                        // handle input files (-i inputFile.json input2.json input3.json)
-                        else if (i < args.Length - 1 && (args[i] == "--files"))
+                        else
                         {
-                            // command line overrides env var
-                            Config.FileList.Clear();
-
-                            while (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.OrdinalIgnoreCase))
-                            {
-                                if (!string.IsNullOrEmpty(args[i + 1]))
-                                {
-                                    Config.FileList.Add(args[i + 1].Trim());
-                                }
-
-                                i++;
-                            }
-                        }
-
-                        // handle sleep (--sleep config.SleepMs)
-                        else if (args[i] == "--sleep")
-                        {
-                            if (int.TryParse(args[i + 1], out int v))
-                            {
-                                Config.SleepMs = v;
-                                i++;
-                            }
-
-                            else
-                            {
-                                // exit on error
-                                Console.WriteLine(_sleepParameterError, args[i + 1]);
-                                Usage();
-                                Environment.Exit(-1);
-                            }
-                        }
-
-                        // handle config.Threads (--threads config.Threads)
-                        else if (args[i] == "--threads")
-                        {
-                            if (int.TryParse(args[i + 1], out int v))
-                            {
-                                Config.Threads = v;
-                                i++;
-                            }
-                            else
-                            {
-                                // exit on error
-                                Console.WriteLine(_threadsParameterError, args[i + 1]);
-                                Usage();
-                                Environment.Exit(-1);
-                            }
-                        }
-                        // handle duration (--maxage Metrics.MaxAge (minutes))
-                        else if (args[i] == "--maxage")
-                        {
-                            if (int.TryParse(args[i + 1], out int maxAge))
-                            {
-                                Metrics.MaxAge = maxAge;
-                                i++;
-                            }
-                            else
-                            {
-                                // exit on error
-                                Console.WriteLine(_maxAgeParameterError, args[i + 1]);
-                                Usage();
-                                Environment.Exit(-1);
-                            }
-                        }
-
-                        // handle duration (--duration config.Duration (seconds))
-                        else if (args[i] == "--duration")
-                        {
-                            if (int.TryParse(args[i + 1], out int v))
-                            {
-                                Config.Duration = v;
-                                i++;
-                            }
-                            else
-                            {
-                                // exit on error
-                                Console.WriteLine(_durationParameterError, args[i + 1]);
-                                Usage();
-                                Environment.Exit(-1);
-                            }
+                            // exit on error
+                            Console.WriteLine(Constants.SleepParameterError, args[i + 1]);
+                            Usage();
+                            Environment.Exit(-1);
                         }
                     }
 
-                    i++;
+                    // handle config.Threads (--threads config.Threads)
+                    else if (args[i] == ArgKeys.Threads)
+                    {
+                        if (int.TryParse(args[i + 1], out int v))
+                        {
+                            Config.Threads = v;
+                            i++;
+                        }
+                        else
+                        {
+                            // exit on error
+                            Console.WriteLine(Constants.ThreadsParameterError, args[i + 1]);
+                            Usage();
+                            Environment.Exit(-1);
+                        }
+                    }
+                    // handle duration (--maxage Metrics.MaxAge (minutes))
+                    else if (args[i] == ArgKeys.MaxMetricsAge)
+                    {
+                        if (int.TryParse(args[i + 1], out int maxAge))
+                        {
+                            Metrics.MaxAge = maxAge;
+                            i++;
+                        }
+                        else
+                        {
+                            // exit on error
+                            Console.WriteLine(Constants.MaxAgeParameterError, args[i + 1]);
+                            Usage();
+                            Environment.Exit(-1);
+                        }
+                    }
+
+                    // handle duration (--duration config.Duration (seconds))
+                    else if (args[i] == ArgKeys.Duration)
+                    {
+                        if (int.TryParse(args[i + 1], out int v))
+                        {
+                            Config.Duration = v;
+                            i++;
+                        }
+                        else
+                        {
+                            // exit on error
+                            Console.WriteLine(Constants.DurationParameterError, args[i + 1]);
+                            Usage();
+                            Environment.Exit(-1);
+                        }
+                    }
                 }
+
+                i++;
             }
         }
 
+        /// <summary>
+        /// Process environment variables
+        /// </summary>
         private static void ProcessEnvironmentVariables()
         {
-            // Get environment variables
-
             // run as web app if running in App Service
-            string env = Environment.GetEnvironmentVariable("KUDU_APPPATH");
+            string env = Environment.GetEnvironmentVariable(EnvKeys.AppService);
             if (!string.IsNullOrEmpty(env))
             {
                 Config.RunLoop = true;
                 Config.RunWeb = true;
-                Config.Random = true;
             }
 
-            env = Environment.GetEnvironmentVariable("RUNLOOP");
+            env = Environment.GetEnvironmentVariable(EnvKeys.RunLoop);
             if (!string.IsNullOrEmpty(env))
             {
                 if (bool.TryParse(env, out bool b))
@@ -503,7 +478,7 @@ namespace Helium
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("RUNWEB");
+            env = Environment.GetEnvironmentVariable(EnvKeys.RunWeb);
             if (!string.IsNullOrEmpty(env))
             {
                 if (bool.TryParse(env, out bool b))
@@ -512,7 +487,7 @@ namespace Helium
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("RANDOM");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Random);
             if (!string.IsNullOrEmpty(env))
             {
                 if (bool.TryParse(env, out bool b))
@@ -521,7 +496,7 @@ namespace Helium
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("VERBOSE");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Verbose);
             if (!string.IsNullOrEmpty(env))
             {
                 if (bool.TryParse(env, out bool b))
@@ -530,19 +505,19 @@ namespace Helium
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("HOST");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Host);
             if (!string.IsNullOrEmpty(env))
             {
                 Config.Host = env;
             }
 
-            env = Environment.GetEnvironmentVariable("FILES");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Files);
             if (!string.IsNullOrEmpty(env))
             {
                 Config.FileList.AddRange(env.Split(' ', StringSplitOptions.RemoveEmptyEntries));
             }
 
-            env = Environment.GetEnvironmentVariable("SLEEP");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Sleep);
             if (!string.IsNullOrEmpty(env))
             {
                 if (int.TryParse(env, out int v))
@@ -552,12 +527,12 @@ namespace Helium
                 else
                 {
                     // exit on error
-                    Console.WriteLine(_sleepParameterError, env);
+                    Console.WriteLine(Constants.SleepParameterError, env);
                     Environment.Exit(-1);
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("THREADS");
+            env = Environment.GetEnvironmentVariable(EnvKeys.Threads);
             if (!string.IsNullOrEmpty(env))
             {
                 if (int.TryParse(env, out int v))
@@ -567,12 +542,12 @@ namespace Helium
                 else
                 {
                     // exit on error
-                    Console.WriteLine(_threadsParameterError, env);
+                    Console.WriteLine(Constants.ThreadsParameterError, env);
                     Environment.Exit(-1);
                 }
             }
 
-            env = Environment.GetEnvironmentVariable("MAXMETRICSAGE");
+            env = Environment.GetEnvironmentVariable(EnvKeys.MaxMetricsAge);
             if (!string.IsNullOrEmpty(env))
             {
                 if (int.TryParse(env, out int maxAge))
@@ -582,47 +557,45 @@ namespace Helium
                 else
                 {
                     // exit on error
-                    Console.WriteLine(_maxAgeParameterError, env);
+                    Console.WriteLine(Constants.MaxAgeParameterError, env);
                     Environment.Exit(-1);
                 }
 
             }
         }
 
+        /// <summary>
+        /// Test to see if the file exists
+        /// </summary>
+        /// <param name="name">file name or path</param>
+        /// <returns>full path to file or string.empty</returns>
         private static string TestFileExists(string name)
         {
             string file = name.Trim();
 
             if (!string.IsNullOrEmpty(file))
             {
-                if (file.Contains("TestFiles", StringComparison.Ordinal))
+                // add TestFiles directory if not specified (default location)
+                if (!file.StartsWith(Constants.TestFilePath, StringComparison.Ordinal))
                 {
-                    if (!System.IO.File.Exists(file))
-                    {
-                        file = file.Replace("TestFiles/", string.Empty, StringComparison.Ordinal);
-                    }
+                    file = Constants.TestFilePath + file;
                 }
-                else
-                {
-                    if (!System.IO.File.Exists(file))
-                    {
-                        file = "TestFiles/" + file;
-                    }
-                }
-            }
 
-            if (System.IO.File.Exists(file))
-            {
-                return file;
+                if (System.IO.File.Exists(file))
+                {
+                    return file;
+                }
             }
 
             return string.Empty;
         }
 
-        // display the usage text
+        /// <summary>
+        /// Display command line usage
+        /// </summary>
         private static void Usage()
         {
-            Console.WriteLine($"Version: {Helium.Version.AssemblyVersion}");
+            Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}");
             Console.WriteLine();
             Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...]\n[--runloop] [--sleep sleepMs] [--threads numberOfThreads] [--duration durationSeconds] [--random]\n[--runweb] [--verbose] [--maxage maxMinutes]");
             Console.WriteLine("\t--host host name or host Url");

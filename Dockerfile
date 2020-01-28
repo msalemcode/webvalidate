@@ -22,11 +22,11 @@ RUN dotnet publish -c Release -o /app
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1 AS runtime
 
 # create a user
-RUN groupadd -g 4120 helium && \
-    useradd -r -u 4120 -g helium helium
+RUN groupadd -g 4120 webv && \
+    useradd -r -u 4120 -g webv webv
 
-# run as the helium user
-USER helium
+# run as the webv user
+USER webv
 
 EXPOSE 4122
 

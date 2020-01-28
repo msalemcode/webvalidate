@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Helium
+namespace WebValidationTest
 {
     public sealed class Metrics
     {

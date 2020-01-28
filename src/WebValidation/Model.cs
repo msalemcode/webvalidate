@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Smoker
+namespace WebValidation
 {
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "can't be read-only - json serialization")]
     public class Request
@@ -29,6 +29,7 @@ namespace Smoker
         public string ValidationResults { get; set; } = string.Empty;
         public double Duration { get; set; }
         public int StatusCode { get; set; }
+        public long ContentLength { get; set; }
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "can't be read-only - json serialization")]

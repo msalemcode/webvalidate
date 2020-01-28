@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Builder;
 using Newtonsoft.Json;
-using Smoker;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading.Tasks;
+using WebValidation;
 
-namespace Helium
+namespace WebValidationTest
 {
     public static class HomePageMiddlewareExtensions
     {
@@ -43,7 +43,7 @@ namespace Helium
                     string healthz = GetHealthz().GetAwaiter().GetResult();
 
                     // build the response
-                    string html = string.Format(CultureInfo.InvariantCulture, $"Helium Integration Test\nV {Helium.Version.AssemblyVersion}\n\n");
+                    string html = string.Format(CultureInfo.InvariantCulture, $"Web Validation Test\nV {WebValidationTest.Version.AssemblyVersion}\n\n");
                     html += GetConfig();
                     html += GetRunningTime();
                     html += GetMetrics(maxAge);
@@ -76,31 +76,28 @@ namespace Helium
             try
             {
                 // create the PerfTarget
-                Smoker.Request req = new Smoker.Request
+                WebValidation.Request req = new WebValidation.Request
                 {
                     Url = "/healthz/ietf",
-                    PerfTarget = new Smoker.PerfTarget
+                    PerfTarget = new WebValidation.PerfTarget
                     {
                         Category = "healthz",
-                        Targets = new List<double> { 1000, 1500, 2000 }
+                        Targets = new List<double> { 400, 800, 1600 }
                     }
                 };
 
                 // create the validation rule
-                req.Validation = new Smoker.Validation
+                req.Validation = new WebValidation.Validation
                 {
                     ContentType = "application/health+json",
-                    JsonObject = new List<Smoker.JsonProperty>
+                    JsonObject = new List<WebValidation.JsonProperty>
                     {
-                        new Smoker.JsonProperty { Field = "status", Value = "up" }
+                        new WebValidation.JsonProperty { Field = "status", Value = "up" }
                     }
                 };
 
                 // run the health check
-                PerfLog perfLog = await App.Smoker.ExecuteRequest(req).ConfigureAwait(false);
-
-                // add results to metrics
-                App.Metrics.Add(perfLog.StatusCode, perfLog.Duration, perfLog.Category, perfLog.Validated, perfLog.PerfLevel);
+                PerfLog perfLog = await App.WebV.ExecuteRequest(req).ConfigureAwait(false);
 
                 // make the json pretty
                 dynamic d = JsonConvert.DeserializeObject<dynamic>(perfLog.Body);
@@ -108,9 +105,7 @@ namespace Helium
 
                 html += content;
             }
-#pragma warning disable CA1031 // implemented by design
             catch (Exception ex)
-#pragma warning restore CA1031
             {
                 html += ex.Message;
             }

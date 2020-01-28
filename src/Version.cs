@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 
-namespace Helium
+namespace WebValidationTest
 {
     /// <summary>
     /// Assembly Versioning

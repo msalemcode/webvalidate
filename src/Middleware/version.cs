@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 
-namespace Helium
+namespace WebValidationTest
 {
     public static class VersionMiddlewareExtensions
     {

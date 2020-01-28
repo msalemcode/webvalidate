@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Helium
+namespace WebValidationTest
 {
     public class Config
     {

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Threading.Tasks;
 
-namespace Helium
+namespace WebValidationTest
 {
     public class LoggerOptions
     {
