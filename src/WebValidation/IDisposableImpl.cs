@@ -2,7 +2,6 @@
 
 namespace WebValidation
 {
-    // integration test for testing any REST API or web site
     public partial class Test : IDisposable
     {
         private bool disposed = false;

@@ -56,7 +56,11 @@ namespace WebValidation
             return new Dictionary<string, PerfTarget>();
         }
 
-        // read json test file
+        /// <summary>
+        /// Read a json test file
+        /// </summary>
+        /// <param name="file">file path</param>
+        /// <returns>List of Request</returns>
         public List<Request> ReadJson(string file)
         {
             if (string.IsNullOrWhiteSpace(file))

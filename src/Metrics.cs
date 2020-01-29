@@ -4,41 +4,12 @@ using System.Linq;
 
 namespace WebValidationTest
 {
+    /// <summary>
+    /// Test metrics
+    /// </summary>
     public sealed class Metrics
     {
-        public int MaxAge { get; set; } = 240;
-
         public List<Metric> Requests { get; } = new List<Metric>();
-
-        /// <summary>
-        /// Remove old entries to keep the list from growing boundless
-        /// </summary>
-        public void Prune()
-        {
-            if (MaxAge <= 0)
-            {
-                // don't track metrics
-                lock (Requests)
-                {
-                    Requests.Clear();
-                }
-            }
-            else
-            {
-                // keep MaxAge minutes of metrics
-                DateTime now = DateTime.UtcNow.AddMinutes(-1 * MaxAge);
-
-                // remove the first item until the date is out of range
-                // the list is not 100% sorted but there is a where on the query, so a few extra will be ignored until next Prune
-                lock (Requests)
-                {
-                    while (Requests.Count > 0 && Requests[0].Time < now)
-                    {
-                        Requests.RemoveAt(0);
-                    }
-                }
-            }
-        }
 
         /// <summary>
         /// Get the metric aggregates
@@ -131,16 +102,12 @@ namespace WebValidationTest
         /// <param name="validated">validated successfully</param>
         public void Add(int status, double duration, string category, bool validated, int perfLevel)
         {
-            // only track if MaxAge > 0
-            if (MaxAge > 0)
+            // validate status
+            if (status >= 200 && status < 600)
             {
-                // validate status
-                if (status >= 200 && status < 600)
+                lock (Requests)
                 {
-                    lock (Requests)
-                    {
-                        Requests.Add(new Metric { StatusCode = status, Duration = duration, Category = category, Validated = validated, PerfLevel = perfLevel });
-                    }
+                    Requests.Add(new Metric { StatusCode = status, Duration = duration, Category = category, Validated = validated, PerfLevel = perfLevel });
                 }
             }
         }

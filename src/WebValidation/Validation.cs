@@ -8,7 +8,6 @@ using System.Runtime.Serialization;
 
 namespace WebValidation
 {
-    // integration test for testing any REST API or web site
     public partial class Test : IDisposable
     {
         /// <summary>

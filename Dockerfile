@@ -28,9 +28,8 @@ RUN groupadd -g 4120 webv && \
 # run as the webv user
 USER webv
 
-EXPOSE 4122
-
 WORKDIR /app
 COPY --from=build /app .
+COPY /src/TestFiles ./TestFiles
 
 ENTRYPOINT [ "dotnet",  "webvalidate.dll" ]

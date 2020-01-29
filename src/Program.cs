@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
@@ -18,9 +16,18 @@ namespace WebValidationTest
         public static List<Task> Tasks { get; } = new List<Task>();
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "null is valid")]
+        /// <summary>
+        /// Main entry point
+        /// </summary>
+        /// <param name="args">Command Line Parms</param>
         public static void Main(string[] args)
         {
+            // should never be null
+            if (args == null)
+            {
+                args = Array.Empty<string>();
+            }
+
             ProcessEnvironmentVariables();
 
             ProcessCommandArgs(args);
@@ -28,12 +35,12 @@ namespace WebValidationTest
             ValidateParameters();
 
             // create the test
-            WebV = new WebValidation.Test(Config.FileList, Config.Host);
+            WebV = new WebValidation.Test(Config.Host, Config.FileList);
 
             // run one test iteration
             if (!Config.RunLoop)
             {
-                if (!WebV.RunOnce().Result)
+                if (!WebV.RunOnce(Config).Result)
                 {
                     Environment.Exit(-1);
                 }
@@ -56,50 +63,8 @@ namespace WebValidationTest
                 Environment.Exit(0);
             };
 
-            if (Config.RunWeb)
-            {
-                RunWeb(args, TokenSource.Token);
-            }
-            else if (Config.RunLoop)
-            {
-                RunLoop(TokenSource.Token);
-            }
-        }
-
-        /// <summary>
-        /// Run as a web server
-        /// </summary>
-        /// <param name="token">CancellationTokenSource</param>
-        private static void RunWeb(string[] args, CancellationToken token)
-        {
-            IWebHost host;
-
-            // use the default web host builder + startup
-            IWebHostBuilder builder = WebHost.CreateDefaultBuilder(args)
-                .UseKestrel()
-                .UseStartup<Startup>()
-                .UseUrls("http://*:4122/");
-
-            // build the host
-            host = builder.Build();
-
-            // start the test threads
-            for (int i = 0; i < Config.Threads; i++)
-            {
-                Tasks.Add(WebV.RunLoop(i, Config, token));
-            }
-
-            // run the web server
-            try
-            {
-                Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}\nThreads: {Config.Threads}\nSleep: {Config.SleepMs}\nRandomize: {Config.Random}");
-                host.Run();
-                Console.WriteLine("Web server shutdown");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Web Server Exception\n{ex}");
-            }
+            // run in a loop
+            RunLoop(TokenSource.Token);
         }
 
         /// <summary>
@@ -111,12 +76,19 @@ namespace WebValidationTest
             // start the tests on separate threads
             for (int i = 0; i < Config.Threads; i++)
             {
-                Console.WriteLine($"Starting task {i}");
-                Tasks.Add(WebV.RunLoop(i, Config, token));
+                Console.WriteLine($"{DateTime.Now.ToString("MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Task\t{i}");
+                Tasks.Add(WebV.RunLoop(Config, token));
             }
 
-            // wait for all tasks to complete or ctl-c
-            Task.WaitAll(Tasks.ToArray());
+            try
+            {
+                // wait for all tasks to complete or ctl-c
+                Task.WaitAll(Tasks.ToArray());
+            }
+            catch
+            {
+                // this will throw an exception if all the tasks are cancelled, so just ignore it
+            }
         }
 
         /// <summary>
@@ -128,14 +100,6 @@ namespace WebValidationTest
             if (string.IsNullOrWhiteSpace(Config.Host))
             {
                 Console.WriteLine(Constants.HostMissingMessage);
-                Usage();
-                Environment.Exit(-1);
-            }
-
-            // invalid parameter
-            if (Metrics.MaxAge < 0)
-            {
-                Console.Write(Constants.MaxAgeParameterError, Metrics.MaxAge);
                 Usage();
                 Environment.Exit(-1);
             }
@@ -206,23 +170,9 @@ namespace WebValidationTest
             if (!Config.RunLoop)
             {
                 // these params require --runloop
-                if (Config.RunWeb)
-                {
-                    Console.WriteLine("Must specify --runloop to use --runweb\n");
-                    Usage();
-                    Environment.Exit(-1);
-                }
-
                 if (Config.Threads != -1)
                 {
                     Console.WriteLine("Must specify --runloop to use --threads\n");
-                    Usage();
-                    Environment.Exit(-1);
-                }
-
-                if (Config.SleepMs != -1)
-                {
-                    Console.WriteLine("Must specify --runloop to use --sleep\n");
                     Usage();
                     Environment.Exit(-1);
                 }
@@ -240,20 +190,6 @@ namespace WebValidationTest
                     Usage();
                     Environment.Exit(-1);
                 }
-            }
-
-            // invalid combo
-            if (Config.RunWeb && Config.Duration > 0)
-            {
-                Console.WriteLine("Cannot use --duration with --runweb\n");
-                Usage();
-                Environment.Exit(-1);
-            }
-
-            // limit metrics to 12 hours as it's stored in memory
-            if (Metrics.MaxAge > 12 * 60 * 60)
-            {
-                Metrics.MaxAge = 12 * 60 * 60;
             }
 
             // can't be less than 0
@@ -337,12 +273,6 @@ namespace WebValidationTest
                     Config.RunLoop = true;
                 }
 
-                // handle run web (--runweb)
-                else if (args[i] == ArgKeys.RunWeb)
-                {
-                    Config.RunWeb = true;
-                }
-
                 // handle --random
                 else if (args[i] == ArgKeys.Random)
                 {
@@ -417,22 +347,6 @@ namespace WebValidationTest
                             Environment.Exit(-1);
                         }
                     }
-                    // handle duration (--maxage Metrics.MaxAge (minutes))
-                    else if (args[i] == ArgKeys.MaxMetricsAge)
-                    {
-                        if (int.TryParse(args[i + 1], out int maxAge))
-                        {
-                            Metrics.MaxAge = maxAge;
-                            i++;
-                        }
-                        else
-                        {
-                            // exit on error
-                            Console.WriteLine(Constants.MaxAgeParameterError, args[i + 1]);
-                            Usage();
-                            Environment.Exit(-1);
-                        }
-                    }
 
                     // handle duration (--duration config.Duration (seconds))
                     else if (args[i] == ArgKeys.Duration)
@@ -461,29 +375,12 @@ namespace WebValidationTest
         /// </summary>
         private static void ProcessEnvironmentVariables()
         {
-            // run as web app if running in App Service
-            string env = Environment.GetEnvironmentVariable(EnvKeys.AppService);
-            if (!string.IsNullOrEmpty(env))
-            {
-                Config.RunLoop = true;
-                Config.RunWeb = true;
-            }
-
-            env = Environment.GetEnvironmentVariable(EnvKeys.RunLoop);
+            string env = Environment.GetEnvironmentVariable(EnvKeys.RunLoop);
             if (!string.IsNullOrEmpty(env))
             {
                 if (bool.TryParse(env, out bool b))
                 {
                     Config.RunLoop = b;
-                }
-            }
-
-            env = Environment.GetEnvironmentVariable(EnvKeys.RunWeb);
-            if (!string.IsNullOrEmpty(env))
-            {
-                if (bool.TryParse(env, out bool b))
-                {
-                    Config.RunWeb = b;
                 }
             }
 
@@ -546,22 +443,6 @@ namespace WebValidationTest
                     Environment.Exit(-1);
                 }
             }
-
-            env = Environment.GetEnvironmentVariable(EnvKeys.MaxMetricsAge);
-            if (!string.IsNullOrEmpty(env))
-            {
-                if (int.TryParse(env, out int maxAge))
-                {
-                    Metrics.MaxAge = maxAge;
-                }
-                else
-                {
-                    // exit on error
-                    Console.WriteLine(Constants.MaxAgeParameterError, env);
-                    Environment.Exit(-1);
-                }
-
-            }
         }
 
         /// <summary>
@@ -597,20 +478,15 @@ namespace WebValidationTest
         {
             Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}");
             Console.WriteLine();
-            Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...]\n[--runloop] [--sleep sleepMs] [--threads numberOfThreads] [--duration durationSeconds] [--random]\n[--runweb] [--verbose] [--maxage maxMinutes]");
+            Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...]\n[--runloop] [--sleep sleepMs] [--threads numberOfThreads] [--duration durationSeconds] [--random][--verbose]");
             Console.WriteLine("\t--host host name or host Url");
-            Console.WriteLine("\t--files file1 [file2 file3 ...] (default *.json)");
+            Console.WriteLine("\t--files file1 [file2 file3 ...] (default baseline.json)");
             Console.WriteLine("\t--runloop");
             Console.WriteLine("\tLoop Mode Parameters");
             Console.WriteLine("\t\t--sleep number of milliseconds to sleep between requests (default 1000)");
-            Console.WriteLine("\t\t--threads number of concurrent threads (default 1) (max 10)");
             Console.WriteLine("\t\t--duration duration in seconds (default forever");
             Console.WriteLine("\t\t--random randomize requests");
-            Console.WriteLine("\t\t--runweb run as web server (listens on port 4122)");
             Console.WriteLine("\t\t--verbose turn on verbose logging");
-            Console.WriteLine("\t\t--maxage maximum minutes to track metrics (default 240)");
-            Console.WriteLine("\t\t\t0 = do not track metrics");
-            Console.WriteLine("\t\t\trequires --runweb");
         }
     }
 }

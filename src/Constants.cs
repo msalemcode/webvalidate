@@ -1,5 +1,8 @@
 ﻿namespace WebValidationTest
 {
+    /// <summary>
+    /// Constants used in the app
+    /// </summary>
     public sealed class Constants
     {
         // error messages
@@ -19,32 +22,34 @@
 
     }
 
+    /// <summary>
+    /// Environment Variable Keys
+    /// </summary>
     public sealed class EnvKeys
     {
         public const string AppService = "KUDU_APPPATH";
 
         public const string RunLoop = "RUNLOOP";
-        public const string RunWeb = "RUNWEB";
         public const string Threads = "THREADS";
         public const string Sleep = "SLEEP";
         public const string Verbose = "VERBOSE";
         public const string Files = "FILES";
         public const string Random = "RANDOM";
         public const string Host = "HOST";
-        public const string MaxMetricsAge = "MAXMETRICSAGE";
     }
 
+    /// <summary>
+    /// Command Line parameter keys
+    /// </summary>
     public sealed class ArgKeys
     {
         public const string RunLoop = "--runloop";
-        public const string RunWeb = "--runweb";
         public const string Threads = "--threads";
         public const string Sleep = "--sleep";
         public const string Verbose = "--verbose";
         public const string Files = "--files";
         public const string Random = "--random";
         public const string Host = "--host";
-        public const string MaxMetricsAge = "--maxage";
         public const string Duration = "--duration";
         public const string Help = "--help";
         public const string HelpShort = "-h";
