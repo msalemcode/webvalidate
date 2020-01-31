@@ -9,9 +9,8 @@ namespace WebValidationTest
     public sealed class App
     {
         // public properties
-        public static WebValidation.Test WebV { get; set; } = null;
+        public static WebValidation.Test WebV { get; set; }
         public static Config Config { get; } = new Config();
-        public static DateTime StartTime { get; } = DateTime.UtcNow;
         public static Metrics Metrics { get; } = new Metrics();
         public static List<Task> Tasks { get; } = new List<Task>();
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
@@ -22,7 +21,7 @@ namespace WebValidationTest
         /// <param name="args">Command Line Parms</param>
         public static void Main(string[] args)
         {
-            // should never be null
+            // should never be null but just in case
             if (args == null)
             {
                 args = Array.Empty<string>();
@@ -32,10 +31,11 @@ namespace WebValidationTest
 
             ProcessCommandArgs(args);
 
+            // this will exit(-1) if params aren't correct
             ValidateParameters();
 
             // create the test
-            WebV = new WebValidation.Test(Config.Host, Config.FileList);
+            WebV = new WebValidation.Test(Config);
 
             // run one test iteration
             if (!Config.RunLoop)
@@ -64,31 +64,7 @@ namespace WebValidationTest
             };
 
             // run in a loop
-            RunLoop(TokenSource.Token);
-        }
-
-        /// <summary>
-        /// Run tests in a loop
-        /// </summary>
-        /// <param name="ctCancel">CancellationTokenSource</param>
-        private static void RunLoop(CancellationToken token)
-        {
-            // start the tests on separate threads
-            for (int i = 0; i < Config.Threads; i++)
-            {
-                Console.WriteLine($"{DateTime.Now.ToString("MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Task\t{i}");
-                Tasks.Add(WebV.RunLoop(Config, token));
-            }
-
-            try
-            {
-                // wait for all tasks to complete or ctl-c
-                Task.WaitAll(Tasks.ToArray());
-            }
-            catch
-            {
-                // this will throw an exception if all the tasks are cancelled, so just ignore it
-            }
+            WebV.RunLoop(Config, TokenSource.Token);
         }
 
         /// <summary>

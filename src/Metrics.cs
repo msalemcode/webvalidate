@@ -105,9 +105,12 @@ namespace WebValidationTest
             // validate status
             if (status >= 200 && status < 600)
             {
+                // create outside the lock for concurrency
+                var metric = new Metric { StatusCode = status, Duration = duration, Category = category, Validated = validated, PerfLevel = perfLevel };
+
                 lock (Requests)
                 {
-                    Requests.Add(new Metric { StatusCode = status, Duration = duration, Category = category, Validated = validated, PerfLevel = perfLevel });
+                    Requests.Add(metric);
                 }
             }
         }
@@ -140,28 +143,31 @@ namespace WebValidationTest
         public int Q2 { get; set; }
         public int Q3 { get; set; }
         public int Q4 { get; set; }
-
-        public double Q1p => ToPercent(Q1);
-        public double Q2p => ToPercent(Q2);
-        public double Q3p => ToPercent(Q3);
-        public double Q4p => ToPercent(Q4);
         public double Duration { get; set; } = 0;
         public double Average { get; set; } = 0;
         public double Min { get; set; } = 0;
         public double Max { get; set; } = 0;
 
+        // Quartile percentages
+        public double Q1p => ToPercent(Q1);
+        public double Q2p => ToPercent(Q2);
+        public double Q3p => ToPercent(Q3);
+        public double Q4p => ToPercent(Q4);
+
+        /// <summary>
+        /// Compute Quartile percentage - rounded to 3 decimal places
+        /// </summary>
+        /// <param name="value">double</param>
+        /// <returns>double</returns>
         private double ToPercent(double value)
         {
-            double d;
+            double d = 0;
 
-            if (Count <= 0 || value <= 0)
-            {
-                d = 0;
-            }
-            else
+            if (Count > 0 && value > 0)
             {
                 d = value / Count * 100;
 
+                // don't report 0 if count > 1
                 if (d < .001)
                 {
                     d = .001;

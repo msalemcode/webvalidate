@@ -30,6 +30,5 @@ USER webv
 
 WORKDIR /app
 COPY --from=build /app .
-COPY /src/TestFiles ./TestFiles
 
 ENTRYPOINT [ "dotnet",  "webvalidate.dll" ]

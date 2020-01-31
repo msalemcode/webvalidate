@@ -9,6 +9,7 @@ namespace WebValidationTest
     {
         public string Host { get; set; } = string.Empty;
         public bool RunLoop { get; set; } = false;
+        public int MaxConcurrentRequests { get; set; } = 100;
         public int Threads { get; set; } = -1;
         public int SleepMs { get; set; } = -1;
         public int Duration { get; set; } = 0;

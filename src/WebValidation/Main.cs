@@ -8,42 +8,44 @@ using WebValidationTest;
 
 namespace WebValidation
 {
-    // integration test for testing any REST API or web site
+    /// <summary>
+    /// Web Validation Test
+    /// </summary>
     public partial class Test : IDisposable
     {
-        private readonly List<Request> _requestList;
-        private readonly HttpClient _client;
+        private static List<Request> _requestList;
+        private static HttpClient _client;
+        private static Semaphore LoopController;
+
+        private Config _config = null;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier", Justification = "can't be readonly - json serialization")]
         private Dictionary<string, PerfTarget> Targets = new Dictionary<string, PerfTarget>();
-        private Config _config = null;
-        private readonly string _baseUrl;
 
         /// <summary>
         /// CTOR
         /// </summary>
-        /// <param name="fileList">list of files to load</param>
-        /// <param name="baseUrl">server URL (i.e. https://www.microsoft.com)</param>
-        public Test(string baseUrl, List<string> fileList)
+        /// <param name="config">Config</param>
+        public Test(Config config)
         {
-            if (fileList == null)
+            if (config == null || config.FileList == null || string.IsNullOrEmpty(config.Host))
             {
-                throw new ArgumentNullException(nameof(fileList));
+                throw new ArgumentNullException(nameof(config));
             }
 
-            if (string.IsNullOrEmpty(baseUrl))
-            {
-                throw new ArgumentNullException(nameof(baseUrl));
-            }
+            _config = config;
 
-            _baseUrl = baseUrl;
-            _client = OpenHttpClient();
+            // setup the HttpClient
+            _client = OpenHttpClient(config.Host);
+
+            // setup the semaphore
+            LoopController = new Semaphore(_config.MaxConcurrentRequests, _config.MaxConcurrentRequests);
 
             // load the performance targets
             Targets = LoadPerfTargets();
 
-            // load the requests
-            _requestList = LoadRequests(fileList);
+            // load the requests from json files
+            _requestList = LoadRequests(config.FileList);
         }
 
         /// <summary>
@@ -53,12 +55,12 @@ namespace WebValidation
         /// </summary>
         /// <returns>HttpClient</returns>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "handled in IDispose")]
-        HttpClient OpenHttpClient()
+        HttpClient OpenHttpClient(string host)
         {
             return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {
                 Timeout = new TimeSpan(0, 0, 30),
-                BaseAddress = new Uri(_baseUrl)
+                BaseAddress = new Uri(host)
             };
         }
 
@@ -68,6 +70,11 @@ namespace WebValidation
         /// <returns>bool</returns>
         public async Task<bool> RunOnce(Config config)
         {
+            if (config == null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
             bool isError = false;
             int duration;
             DateTime dt;
@@ -104,30 +111,92 @@ namespace WebValidation
         }
 
         /// <summary>
+        /// Submit a request from the timer event
+        /// </summary>
+        /// <param name="timerState">TimerState</param>
+        private static void TimerTask(object timerState)
+        {
+            // get a semaphore slot - rate limit the requests
+            if (!LoopController.WaitOne(10))
+            {
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tSemaphore Locked");
+                return;
+            }
+
+            int index = 0;
+
+            // cast to TimerState
+            if (!(timerState is TimerState state))
+            {
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tError\tTimerState is null");
+                return;
+            }
+
+            // lock the state for updates
+            lock (state.Lock)
+            {
+                index = state.Index;
+
+                // increment
+                state.Count++;
+                state.Index++;
+
+                // keep the index in range
+                if (state.Index >= state.MaxIndex)
+                {
+                    state.Index = 0;
+                }
+            }
+
+            // randomize request index
+            if (state.Random != null)
+            {
+                index = state.Random.Next(0, state.MaxIndex);
+            }
+
+            Request req = _requestList[index];
+            DateTime dt = DateTime.UtcNow;
+
+            try
+            {
+                // Execute the request
+                state.Test.ExecuteRequest(req).Wait();
+            }
+
+            catch (OperationCanceledException oce)
+            {
+                // log and ignore any error
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{req.Url}\tTaskCancelledException\t{oce.Message}");
+            }
+
+            catch (Exception ex)
+            {
+                // log and ignore any error
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{req.Url}\tWebvException\t{ex.Message}");
+            }
+
+            // make sure to release the semaphore
+            LoopController.Release();
+        }
+
+        /// <summary>
         /// Run the validation tests in a loop
         /// </summary>
         /// <param name="id">thread id</param>
         /// <param name="config">Config</param>
-        /// <param name="ct">CancellationToken</param>
+        /// <param name="token">CancellationToken</param>
         /// <returns></returns>
-        public async Task RunLoop(Config config, CancellationToken ct)
+        public void RunLoop(Config config, CancellationToken token)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
 
-            if (ct == null)
+            if (token == null)
             {
-                throw new ArgumentNullException(nameof(ct));
+                throw new ArgumentNullException(nameof(token));
             }
 
-            DateTime dt;
             DateTime dtMax = DateTime.MaxValue;
             DateTime dtLog = DateTime.UtcNow;
-            int duration;
-            PerfLog perfLog;
-            int i;
-            int count = 0;
-            Request r;
-            Random rand = new Random(DateTime.UtcNow.Millisecond);
 
             dtLog = new DateTime(dtLog.Year, dtLog.Month, dtLog.Day, dtLog.Hour, 0, 0).AddHours(1);
 
@@ -137,87 +206,64 @@ namespace WebValidation
                 dtMax = DateTime.UtcNow.AddSeconds(config.Duration);
             }
 
-            // loop for duration or forever
-            while (DateTime.UtcNow < dtMax)
+            // create the shared state
+            TimerState state = new TimerState { MaxIndex = _requestList.Count, Test = this };
+
+            if (config.Random)
             {
-                i = 0;
-
-                // send each request
-                while (i < _requestList.Count && DateTime.UtcNow < dtMax)
-                {
-                    // log requests in last hour
-                    if (DateTime.UtcNow > dtLog)
-                    {
-                        Console.WriteLine($"{dtLog.AddHours(-1).ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tRequests\t{count}");
-                        dtLog = dtLog.AddHours(1);
-                        count = 0;
-                    }
-                    if (ct.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    count++;
-
-                    // randomize request
-                    if (config.Random)
-                    {
-                        i = rand.Next(0, _requestList.Count - 1);
-                    }
-
-                    r = _requestList[i];
-                    dt = DateTime.UtcNow;
-
-                    try
-                    {
-                        // create the request
-                        perfLog = await ExecuteRequest(r).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException oce)
-                    {
-                        // ignore any error and keep processing
-                        Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tTaskCancelledException\t{oce.Message}");
-                    }
-
-                    catch (Exception ex)
-                    {
-                        // ignore any error and keep processing
-                        Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t500\t{Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0)}\t0\t{r.Url}\tWebvException\t{ex.Message}");
-                    }
-
-                    // increment the index if not random
-                    if (!config.Random)
-                    {
-                        i++;
-                    }
-
-                    // compute the target sleep time
-                    duration = config.SleepMs - (int)DateTime.UtcNow.Subtract(dt).TotalMilliseconds;
-
-                    // sleep between each request
-                    if (duration > 0)
-                    {
-                        await Task.Delay(duration, ct).ConfigureAwait(false);
-                    }
-                }
+                state.Random = new Random(DateTime.UtcNow.Millisecond);
             }
+
+            if (config.SleepMs < 1)
+            {
+                config.SleepMs = 1;
+            }
+
+            Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test Loop");
+
+            // start the timer
+            Timer timer = new Timer(new TimerCallback(TimerTask), state, 0, config.SleepMs);
+
+            // run the wait loop
+            while (!token.IsCancellationRequested && DateTime.UtcNow < dtMax)
+            {
+                // log requests in last hour
+                if (DateTime.UtcNow >= dtLog)
+                {
+                    // get count and reset to zero
+                    long count = Interlocked.Exchange(ref state.Count, 0);
+
+                    // log the count
+                    Console.WriteLine($"{dtLog.AddHours(-1).ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tRequests\t{count}");
+
+                    // set next log time
+                    dtLog = dtLog.AddHours(1);
+                }
+
+                // sleep
+                Task.Delay(500).Wait(token);
+            }
+
+            // end and dispose of the timer
+            timer.Dispose();
         }
 
         /// <summary>
         /// Execute a single validation test
         /// </summary>
-        /// <param name="r">Request</param>
+        /// <param name="request">Request</param>
         /// <returns>PerfLog</returns>
-        public async Task<PerfLog> ExecuteRequest(Request r)
+        public async Task<PerfLog> ExecuteRequest(Request request)
         {
-            if (r == null)
+            if (request == null)
             {
-                throw new ArgumentNullException(nameof(r));
+                throw new ArgumentNullException(nameof(request));
             }
 
             PerfLog perfLog;
 
-            using (HttpRequestMessage req = new HttpRequestMessage(new HttpMethod(r.Verb), r.Url))
+            // send the request
+            using (HttpRequestMessage req = new HttpRequestMessage(new HttpMethod(request.Verb), request.Url))
             {
                 DateTime dt = DateTime.UtcNow;
 
@@ -228,14 +274,14 @@ namespace WebValidation
                 double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
 
                 // validate the response
-                string res = ValidateAll(r, resp, body);
+                string res = ValidateAll(request, resp, body);
 
                 // check the performance
-                perfLog = CreatePerfLog(r, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
+                perfLog = CreatePerfLog(request, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
             }
 
             // log the test
-            LogToConsole(r, perfLog);
+            LogToConsole(request, perfLog);
 
             // add the metrics
             // TODO - change this to use App Insights
@@ -247,42 +293,49 @@ namespace WebValidation
         /// <summary>
         /// Create a PerfLog
         /// </summary>
-        /// <param name="r">Request</param>
-        /// <param name="res">validation errors</param>
+        /// <param name="request">Request</param>
+        /// <param name="validationResults">validation errors</param>
         /// <param name="duration">duration</param>
         /// <param name="body">content body</param>
         /// <param name="contentLength">content length</param>
         /// <param name="statusCode">status code</param>
         /// <returns></returns>
-        public PerfLog CreatePerfLog(Request r, string res, double duration, string body, long contentLength, int statusCode)
+        public PerfLog CreatePerfLog(Request request, string validationResults, double duration, string body, long contentLength, int statusCode)
         {
             // map the parameters
             PerfLog log = new PerfLog
             {
                 StatusCode = statusCode,
-                Category = r?.PerfTarget?.Category ?? string.Empty,
-                Validated = string.IsNullOrEmpty(res),
-                ValidationResults = res,
+                Category = request?.PerfTarget?.Category ?? string.Empty,
+                Validated = string.IsNullOrEmpty(validationResults),
+                ValidationResults = validationResults,
                 Body = body,
                 Duration = duration,
-                ContentLength = contentLength
+                ContentLength = contentLength,
+                PerfLevel = 0
             };
 
-            // determine the Performance Level
+            // determine the Performance Level based on category
             if (!string.IsNullOrEmpty(log.Category))
             {
-                PerfTarget target = Targets[log.Category];
-
-                if (target != null)
+                if (Targets.ContainsKey(log.Category))
                 {
-                    log.PerfLevel = target.Targets.Count + 1;
+                    // lookup the target
+                    PerfTarget target = Targets[log.Category];
 
-                    for (int i = 0; i < target.Targets.Count; i++)
+                    if (target != null)
                     {
-                        if (duration <= target.Targets[i])
+                        // set to max
+                        log.PerfLevel = target.Targets.Count + 1;
+
+                        for (int i = 0; i < target.Targets.Count; i++)
                         {
-                            log.PerfLevel = i + 1;
-                            break;
+                            // find the lowest Perf Target achieved
+                            if (duration <= target.Targets[i])
+                            {
+                                log.PerfLevel = i + 1;
+                                break;
+                            }
                         }
                     }
                 }
@@ -294,16 +347,14 @@ namespace WebValidation
         /// <summary>
         /// Log the test
         /// </summary>
-        /// <param name="r">Request</param>
+        /// <param name="request">Request</param>
         /// <param name="perfLog">PerfLog</param>
-        void LogToConsole(Request r, PerfLog perfLog)
+        void LogToConsole(Request request, PerfLog perfLog)
         {
-            string log = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(13)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{r.Url}{perfLog.ValidationResults.Replace("\n", string.Empty, StringComparison.OrdinalIgnoreCase)}");
-
-            // only log 4XX and 5XX status codes unless verbose is true
+            // only log 4XX and 5XX status codes unless verbose is true or config is null
             if (_config == null || _config.Verbose || perfLog.StatusCode > 399 || !string.IsNullOrEmpty(perfLog.ValidationResults))
             {
-                Console.WriteLine(log);
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(13)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Url}{perfLog.ValidationResults.Replace("\n", string.Empty, StringComparison.OrdinalIgnoreCase)}", CultureInfo.InvariantCulture);
             }
         }
     }
