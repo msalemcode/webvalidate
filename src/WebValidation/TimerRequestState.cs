@@ -3,9 +3,9 @@
 namespace WebValidation
 {
     /// <summary>
-    /// Shared state for the Timer Tasks
+    /// Shared state for the Timer Request Tasks
     /// </summary>
-    class TimerState
+    class TimerRequestState
     {
         public int Index = 0;
         public int MaxIndex = 0;
@@ -13,5 +13,6 @@ namespace WebValidation
         public Random Random = null;
         public object Lock = new object();
         public Test Test;
+        public DateTime CurrentLogTime;
     }
 }

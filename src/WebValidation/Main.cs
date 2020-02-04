@@ -59,7 +59,7 @@ namespace WebValidation
         {
             return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {
-                Timeout = new TimeSpan(0, 0, 30),
+                Timeout = new TimeSpan(0, 0, _config.RequestTimeout),
                 BaseAddress = new Uri(host)
             };
         }
@@ -111,22 +111,43 @@ namespace WebValidation
         }
 
         /// <summary>
+        /// Summarize the requests for the hour
+        /// </summary>
+        /// <param name="timerState">TimerState</param>
+        private static void SummaryLogTask(object timerState)
+        {
+            if (!(timerState is TimerRequestState state))
+            {
+                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tError\tTimerState is null");
+                return;
+            }
+
+            // get count and reset to zero
+            long count = Interlocked.Exchange(ref state.Count, 0);
+
+            // log the count
+            Console.WriteLine($"{state.CurrentLogTime.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tTotal Requests\t{count}");
+
+            // set next log time
+            state.CurrentLogTime = state.CurrentLogTime.AddHours(1);
+        }
+
+        /// <summary>
         /// Submit a request from the timer event
         /// </summary>
         /// <param name="timerState">TimerState</param>
-        private static void TimerTask(object timerState)
+        private static void SubmitRequestTask(object timerState)
         {
             // get a semaphore slot - rate limit the requests
             if (!LoopController.WaitOne(10))
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tSemaphore Locked");
                 return;
             }
 
             int index = 0;
 
             // cast to TimerState
-            if (!(timerState is TimerState state))
+            if (!(timerState is TimerRequestState state))
             {
                 Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tError\tTimerState is null");
                 return;
@@ -196,9 +217,6 @@ namespace WebValidation
             }
 
             DateTime dtMax = DateTime.MaxValue;
-            DateTime dtLog = DateTime.UtcNow;
-
-            dtLog = new DateTime(dtLog.Year, dtLog.Month, dtLog.Day, dtLog.Hour, 0, 0).AddHours(1);
 
             // only run for duration (seconds)
             if (config.Duration > 0)
@@ -207,7 +225,14 @@ namespace WebValidation
             }
 
             // create the shared state
-            TimerState state = new TimerState { MaxIndex = _requestList.Count, Test = this };
+            TimerRequestState state = new TimerRequestState
+            {
+                MaxIndex = _requestList.Count,
+                Test = this,
+
+                // current hour
+                CurrentLogTime = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day, DateTime.UtcNow.Hour, 0, 0)
+            };
 
             if (config.Random)
             {
@@ -221,31 +246,37 @@ namespace WebValidation
 
             Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test Loop");
 
-            // start the timer
-            Timer timer = new Timer(new TimerCallback(TimerTask), state, 0, config.SleepMs);
+            // start the timers
+            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
+            Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
 
             // run the wait loop
-            while (!token.IsCancellationRequested && DateTime.UtcNow < dtMax)
+            if (dtMax == DateTime.MaxValue)
             {
-                // log requests in last hour
-                if (DateTime.UtcNow >= dtLog)
+                Task.Delay(-1).Wait(token);
+            }
+            else
+            {
+                // wait one hour to keep total milliseconds from overflowing
+                while (dtMax.Subtract(DateTime.UtcNow).TotalHours > 0)
                 {
-                    // get count and reset to zero
-                    long count = Interlocked.Exchange(ref state.Count, 0);
-
-                    // log the count
-                    Console.WriteLine($"{dtLog.AddHours(-1).ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tRequests\t{count}");
-
-                    // set next log time
-                    dtLog = dtLog.AddHours(1);
+                    Task.Delay(60 * 60 * 1000).Wait(token);
                 }
 
-                // sleep
-                Task.Delay(500).Wait(token);
+                Task.Delay((int)dtMax.Subtract(DateTime.UtcNow).TotalMilliseconds).Wait(token);
             }
 
             // end and dispose of the timer
-            timer.Dispose();
+            if (timer != null)
+            {
+              timer.Dispose();
+            }
+            
+            if (logTimer != null)
+            {
+              logTimer.Dispose();
+            }
+            
         }
 
         /// <summary>
@@ -352,7 +383,7 @@ namespace WebValidation
         void LogToConsole(Request request, PerfLog perfLog)
         {
             // only log 4XX and 5XX status codes unless verbose is true or config is null
-            if (_config == null || _config.Verbose || perfLog.StatusCode > 399 || !string.IsNullOrEmpty(perfLog.ValidationResults))
+            if (_config == null || (bool)_config.Verbose || perfLog.StatusCode > 399 || !string.IsNullOrEmpty(perfLog.ValidationResults))
             {
                 Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(13)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Url}{perfLog.ValidationResults.Replace("\n", string.Empty, StringComparison.OrdinalIgnoreCase)}", CultureInfo.InvariantCulture);
             }

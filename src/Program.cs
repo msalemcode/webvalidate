@@ -56,7 +56,7 @@ namespace WebValidationTest
 
                 Console.WriteLine(Constants.ControlCMessage);
 
-                // give threads a chance to shutdown
+                // give tasks a chance to shutdown
                 Task.Delay(500);
 
                 // end the app
@@ -94,8 +94,8 @@ namespace WebValidationTest
             }
 
             // validate additional parameters
-            ValidateNonRunloopParameters();
-            ValidateRunloopParameters();
+            ValidateRunOnceParameters();
+            ValidateRunLoopParameters();
             ValidateFileList();
         }
 
@@ -134,6 +134,7 @@ namespace WebValidationTest
             if (Config.FileList.Count == 0)
             {
                 Console.WriteLine(Constants.NoFilesFoundMessage);
+                Usage();
                 Environment.Exit(-1);
             }
         }
@@ -141,37 +142,41 @@ namespace WebValidationTest
         /// <summary>
         /// Validate the parameters if --runloop not specified
         /// </summary>
-        private static void ValidateNonRunloopParameters()
+        private static void ValidateRunOnceParameters()
         {
             if (!Config.RunLoop)
             {
-                // these params require --runloop
-                if (Config.Threads != -1)
+                // default verbose to true
+                if (Config.Verbose == null)
                 {
-                    Console.WriteLine("Must specify --runloop to use --threads\n");
-                    Usage();
-                    Environment.Exit(-1);
+                    Config.Verbose = true;
                 }
 
+                // these params require --runloop
                 if (Config.Duration > 0)
                 {
-                    Console.WriteLine("Must specify --runloop to use --duration\n");
+                    Console.WriteLine(Constants.RunLoopMessage, "duration\n");
                     Usage();
                     Environment.Exit(-1);
                 }
 
                 if (Config.Random)
                 {
-                    Console.WriteLine("Must specify --runloop to use --random\n");
+                    Console.WriteLine(Constants.RunLoopMessage, "random\n");
                     Usage();
                     Environment.Exit(-1);
                 }
+
+                // -1 means was not specified
+                if (Config.SleepMs == -1)
+                {
+                    Config.SleepMs = 0;
+                }
             }
 
-            // can't be less than 0
-            if (Config.Duration < 0)
+            if (Config.RequestTimeout < 1)
             {
-                Console.WriteLine(Constants.DurationParameterError, Config.Duration);
+                Console.WriteLine(Constants.RequestTimeoutParameterError, Config.RequestTimeout);
                 Usage();
                 Environment.Exit(-1);
             }
@@ -180,31 +185,26 @@ namespace WebValidationTest
         /// <summary>
         /// Validate parameters if --runloop specified
         /// </summary>
-        private static void ValidateRunloopParameters()
+        private static void ValidateRunLoopParameters()
         {
             if (Config.RunLoop)
             {
+                // default verbose to false
+                if (Config.Verbose == null)
+                {
+                    Config.Verbose = false;
+                }
+
                 // -1 means was not specified
                 if (Config.SleepMs == -1)
                 {
                     Config.SleepMs = 1000;
                 }
 
-                if (Config.Threads == -1)
-                {
-                    Config.Threads = 1;
-                }
-
-                // let's not get too crazy
-                if (Config.Threads > 10)
-                {
-                    Config.Threads = 10;
-                }
-
                 // must be > 0
-                if (Config.Threads <= 0)
+                if (Config.MaxConcurrentRequests < 1)
                 {
-                    Console.WriteLine(Constants.ThreadsParameterError, Config.Threads);
+                    Console.WriteLine(Constants.MaxConcurrentParameterError, Config.MaxConcurrentRequests);
                     Usage();
                     Environment.Exit(-1);
                 }
@@ -213,6 +213,14 @@ namespace WebValidationTest
                 if (Config.SleepMs < 0)
                 {
                     Console.WriteLine(Constants.SleepParameterError, Config.SleepMs);
+                    Usage();
+                    Environment.Exit(-1);
+                }
+
+                // can't be less than 0
+                if (Config.Duration < 0)
+                {
+                    Console.WriteLine(Constants.DurationParameterError, Config.Duration);
                     Usage();
                     Environment.Exit(-1);
                 }
@@ -225,6 +233,8 @@ namespace WebValidationTest
         /// <param name="args">string[]</param>
         private static void ProcessCommandArgs(string[] args)
         {
+            const string invalidArgsMessage = "\nInvalid argument: {0}\n";
+
             // show usage
             if (args == null || args.Length == 0 || args[0] == ArgKeys.Help || args[0] == ArgKeys.HelpShort)
             {
@@ -238,7 +248,7 @@ namespace WebValidationTest
             {
                 if (!args[i].StartsWith("--", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine($"\nInvalid argument: {args[i]}\n");
+                    Console.WriteLine(invalidArgsMessage, args[i]);
                     Usage();
                     Environment.Exit(-1);
                 }
@@ -307,18 +317,35 @@ namespace WebValidationTest
                         }
                     }
 
-                    // handle config.Threads (--threads config.Threads)
-                    else if (args[i] == ArgKeys.Threads)
+                    // handle config.MaxConcurrentRequests (--maxconncurrent)
+                    else if (args[i] == ArgKeys.MaxConcurrent)
                     {
                         if (int.TryParse(args[i + 1], out int v))
                         {
-                            Config.Threads = v;
+                            Config.MaxConcurrentRequests = v;
                             i++;
                         }
                         else
                         {
                             // exit on error
-                            Console.WriteLine(Constants.ThreadsParameterError, args[i + 1]);
+                            Console.WriteLine(Constants.MaxConcurrentParameterError, args[i + 1]);
+                            Usage();
+                            Environment.Exit(-1);
+                        }
+                    }
+
+                    // handle config.RequestTimeout (--timeout)
+                    else if (args[i] == ArgKeys.RequestTimeout)
+                    {
+                        if (int.TryParse(args[i + 1], out int v))
+                        {
+                            Config.RequestTimeout = v;
+                            i++;
+                        }
+                        else
+                        {
+                            // exit on error
+                            Console.WriteLine(Constants.RequestTimeoutParameterError, args[i + 1]);
                             Usage();
                             Environment.Exit(-1);
                         }
@@ -401,21 +428,55 @@ namespace WebValidationTest
                 {
                     // exit on error
                     Console.WriteLine(Constants.SleepParameterError, env);
+                    Usage();
                     Environment.Exit(-1);
                 }
             }
 
-            env = Environment.GetEnvironmentVariable(EnvKeys.Threads);
+            env = Environment.GetEnvironmentVariable(EnvKeys.MaxConcurrent);
             if (!string.IsNullOrEmpty(env))
             {
                 if (int.TryParse(env, out int v))
                 {
-                    Config.Threads = v;
+                    Config.MaxConcurrentRequests = v;
                 }
                 else
                 {
                     // exit on error
-                    Console.WriteLine(Constants.ThreadsParameterError, env);
+                    Console.WriteLine(Constants.MaxConcurrentParameterError, env);
+                    Usage();
+                    Environment.Exit(-1);
+                }
+            }
+
+            env = Environment.GetEnvironmentVariable(EnvKeys.RequestTimeout);
+            if (!string.IsNullOrEmpty(env))
+            {
+                if (int.TryParse(env, out int v))
+                {
+                    Config.RequestTimeout = v;
+                }
+                else
+                {
+                    // exit on error
+                    Console.WriteLine(Constants.RequestTimeoutParameterError, env);
+                    Usage();
+                    Environment.Exit(-1);
+                }
+            }
+
+            env = Environment.GetEnvironmentVariable(EnvKeys.Duration);
+            if (!string.IsNullOrEmpty(env))
+            {
+                if (int.TryParse(env, out int v))
+                {
+                    Config.Duration = v;
+                }
+                else
+                {
+                    // exit on error
+                    Console.WriteLine(Constants.DurationParameterError, env);
+                    Usage();
                     Environment.Exit(-1);
                 }
             }
@@ -454,13 +515,16 @@ namespace WebValidationTest
         {
             Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}");
             Console.WriteLine();
-            Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...]\n[--runloop] [--sleep sleepMs] [--threads numberOfThreads] [--duration durationSeconds] [--random][--verbose]");
+            Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...] [--sleep ms]\n[--runloop] [--sleep ms] [--maxconcurrent maxConcurrentRequests] [--duration durationSeconds] [--random] [--verbose]");
             Console.WriteLine("\t--host host name or host Url");
             Console.WriteLine("\t--files file1 [file2 file3 ...] (default baseline.json)");
-            Console.WriteLine("\t--runloop");
+            Console.WriteLine("\t--timeout request timeout in seconds (default 30 sec)");
+            Console.WriteLine("\t--sleep number of milliseconds to sleep between requests (default 0)");
+            Console.WriteLine("\t--duration duration in seconds (default forever)");
+            Console.WriteLine("\t--runloop runs the test in a continuous loop");
             Console.WriteLine("\tLoop Mode Parameters");
             Console.WriteLine("\t\t--sleep number of milliseconds to sleep between requests (default 1000)");
-            Console.WriteLine("\t\t--duration duration in seconds (default forever");
+            Console.WriteLine("\t\t--maxconcurrent max concurrent requests (default 100");
             Console.WriteLine("\t\t--random randomize requests");
             Console.WriteLine("\t\t--verbose turn on verbose logging");
         }
