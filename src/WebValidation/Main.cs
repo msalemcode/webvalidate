@@ -201,6 +201,41 @@ namespace WebValidation
         }
 
         /// <summary>
+        /// Display the startup message for RunLoop
+        /// </summary>
+        private static void DisplayStartupMessage(Config config)
+        {
+            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test Loop on {config.Host}\n\t\t");
+
+            msg += "Files: ";
+            if (config.FileList.Count > 1)
+            {
+                foreach (string f in config.FileList)
+                {
+                    msg += f.Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase) + " ";
+                }
+                msg = msg.Trim() + "\n\t\t";
+            }
+            else
+            {
+                msg += config.FileList[0].Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase);
+            }
+
+            msg += "; Sleep:" + config.SleepMs.ToString(CultureInfo.InvariantCulture);
+            msg += "; MaxConcurrent: " + config.MaxConcurrentRequests.ToString(CultureInfo.InvariantCulture);
+            if (config.Duration > 0)
+            {
+                msg += "; " + config.Duration.ToString(CultureInfo.InvariantCulture);
+            }
+            msg += config.Random ? "; Random" : string.Empty;
+            msg += (bool)config.Verbose ? "; Verbose" : string.Empty;
+
+            msg += string.IsNullOrEmpty(config.TelemetryApp) ? string.Empty : string.Format(CultureInfo.InvariantCulture, $"\n\t\tTelemetry: {config.TelemetryApp} {config.TelemetryKey}");
+
+            Console.WriteLine(msg);
+        }
+
+        /// <summary>
         /// Run the validation tests in a loop
         /// </summary>
         /// <param name="id">thread id</param>
@@ -244,7 +279,7 @@ namespace WebValidation
                 config.SleepMs = 1;
             }
 
-            Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test Loop");
+            DisplayStartupMessage(config);
 
             // start the timers
             Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
@@ -276,7 +311,6 @@ namespace WebValidation
             {
               logTimer.Dispose();
             }
-            
         }
 
         /// <summary>
@@ -315,8 +349,10 @@ namespace WebValidation
             LogToConsole(request, perfLog);
 
             // add the metrics
-            // TODO - change this to use App Insights
-            //App.Metrics.Add(perfLog.StatusCode, perfLog.Duration, perfLog.Category, perfLog.Validated, perfLog.PerfLevel);
+            if (App.Metrics != null)
+            {
+                App.Metrics.Add(perfLog.StatusCode, perfLog.Duration, perfLog.Category, perfLog.Validated, perfLog.PerfLevel, perfLog.ContentLength, request.Url, perfLog.ValidationResults);
+            }
 
             return perfLog;
         }

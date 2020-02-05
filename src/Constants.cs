@@ -13,7 +13,8 @@
         public const string RequestTimeoutParameterError = "Invalid request timeout parameter: {0}\n";
         public const string HostMissingMessage = "Must specify --host parameter\n";
         public const string NoFilesFoundMessage = "No files found";
-        public const string RunLoopMessage = "Must specify --runloop to use --{0}";
+        public const string TelemetryParameterError = "Invalid telemetry parameter: {0} {1}\n";
+        public const string RunLoopMessage = "Must specify --runloop to use --{0}\n";
 
         public const string ControlCMessage = "Ctl-C Pressed - Starting shutdown ...";
 
@@ -38,6 +39,8 @@
         public const string Host = "HOST";
         public const string Duration = "DURATION";
         public const string RequestTimeout = "TIMEOUT";
+        public const string TelemetryKey = "TELEMETRYKEY";
+        public const string TelemetryAppName = "TELEMETRYAPPNAME";
     }
 
     /// <summary>
@@ -54,6 +57,7 @@
         public const string Host = "--host";
         public const string Duration = "--duration";
         public const string RequestTimeout = "--timeout";
+        public const string Telemetry = "--telemetry";
         public const string Help = "--help";
         public const string HelpShort = "-h";
     }

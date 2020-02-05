@@ -15,6 +15,8 @@ namespace WebValidationTest
         public bool Random { get; set; } = false;
         public bool? Verbose { get; set; } = null;
         public int RequestTimeout { get; set; } = 30;
+        public string TelemetryKey { get; set; }
+        public string TelemetryApp { get; set; }
         public List<string> FileList { get; } = new List<string>();
     }
 }

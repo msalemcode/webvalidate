@@ -11,7 +11,7 @@ namespace WebValidationTest
         // public properties
         public static WebValidation.Test WebV { get; set; }
         public static Config Config { get; } = new Config();
-        public static Metrics Metrics { get; } = new Metrics();
+        public static WebVMetrics Metrics { get; set; }
         public static List<Task> Tasks { get; } = new List<Task>();
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
 
@@ -34,6 +34,11 @@ namespace WebValidationTest
             // this will exit(-1) if params aren't correct
             ValidateParameters();
 
+            if (!string.IsNullOrEmpty(Config.TelemetryApp) && !string.IsNullOrEmpty(Config.TelemetryKey))
+            {
+                Metrics = new WebVMetrics(Config.TelemetryApp, Config.TelemetryKey);
+            }
+
             // create the test
             WebV = new WebValidation.Test(Config);
 
@@ -42,6 +47,7 @@ namespace WebValidationTest
             {
                 if (!WebV.RunOnce(Config).Result)
                 {
+                    Usage();
                     Environment.Exit(-1);
                 }
 
@@ -155,14 +161,14 @@ namespace WebValidationTest
                 // these params require --runloop
                 if (Config.Duration > 0)
                 {
-                    Console.WriteLine(Constants.RunLoopMessage, "duration\n");
+                    Console.WriteLine(Constants.RunLoopMessage, "duration");
                     Usage();
                     Environment.Exit(-1);
                 }
 
                 if (Config.Random)
                 {
-                    Console.WriteLine(Constants.RunLoopMessage, "random\n");
+                    Console.WriteLine(Constants.RunLoopMessage, "random");
                     Usage();
                     Environment.Exit(-1);
                 }
@@ -174,11 +180,24 @@ namespace WebValidationTest
                 }
             }
 
+            // validate request timeout
             if (Config.RequestTimeout < 1)
             {
                 Console.WriteLine(Constants.RequestTimeoutParameterError, Config.RequestTimeout);
                 Usage();
                 Environment.Exit(-1);
+            }
+
+            // validate telemetry
+            if (!string.IsNullOrEmpty(Config.TelemetryKey) || !string.IsNullOrEmpty(Config.TelemetryApp))
+            {
+                // both or neither have to be specified
+                if (string.IsNullOrEmpty(Config.TelemetryKey) || string.IsNullOrEmpty(Config.TelemetryApp))
+                {
+                    Console.WriteLine(Constants.TelemetryParameterError, Config.TelemetryApp, Config.TelemetryKey);
+                    Usage();
+                    Environment.Exit(-1);
+                }
             }
         }
 
@@ -281,7 +300,7 @@ namespace WebValidationTest
                         i++;
                     }
 
-                    // handle input files (-i inputFile.json input2.json input3.json)
+                    // handle input files (--files inputFile.json input2.json input3.json)
                     else if (i < args.Length - 1 && (args[i] == ArgKeys.Files))
                     {
                         // command line overrides env var
@@ -295,6 +314,26 @@ namespace WebValidationTest
                                 Config.FileList.Add(args[i + 1].Trim());
                             }
 
+                            i++;
+                        }
+                    }
+
+                    // handle telemetry app name and key (--telemetry appName key)
+                    // checking for < args.Length - 2 will miss the usage error
+                    //    where the command line ends with -- telemetry onlyOneArg
+                    else if (i < args.Length - 1 && (args[i] == ArgKeys.Telemetry))
+                    {
+                        // get app name
+                        if (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Config.TelemetryApp = args[i + 1];
+                            i++;
+                        }
+
+                        // get key
+                        if (i + 1 < args.Length && !args[i + 1].StartsWith("-", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Config.TelemetryKey = args[i + 1];
                             i++;
                         }
                     }
@@ -480,6 +519,18 @@ namespace WebValidationTest
                     Environment.Exit(-1);
                 }
             }
+
+            env = Environment.GetEnvironmentVariable(EnvKeys.TelemetryAppName);
+            if (!string.IsNullOrEmpty(env))
+            {
+                Config.TelemetryApp = env;
+            }
+
+            env = Environment.GetEnvironmentVariable(EnvKeys.TelemetryKey);
+            if (!string.IsNullOrEmpty(env))
+            {
+                Config.TelemetryKey = env;
+            }
         }
 
         /// <summary>
@@ -515,18 +566,21 @@ namespace WebValidationTest
         {
             Console.WriteLine($"Version: {WebValidationTest.Version.AssemblyVersion}");
             Console.WriteLine();
-            Console.WriteLine("Usage: dotnet run -- [-h] [--help] --host hostUrl [--files file1.json [file2.json] [file3.json] ...] [--sleep ms]\n[--runloop] [--sleep ms] [--maxconcurrent maxConcurrentRequests] [--duration durationSeconds] [--random] [--verbose]");
-            Console.WriteLine("\t--host host name or host Url");
-            Console.WriteLine("\t--files file1 [file2 file3 ...] (default baseline.json)");
-            Console.WriteLine("\t--timeout request timeout in seconds (default 30 sec)");
-            Console.WriteLine("\t--sleep number of milliseconds to sleep between requests (default 0)");
-            Console.WriteLine("\t--duration duration in seconds (default forever)");
-            Console.WriteLine("\t--runloop runs the test in a continuous loop");
+            Console.WriteLine("Usage: dotnet run -- ...");
+            Console.WriteLine("\t[--help] [-h] help (must be first parameter)");
+            Console.WriteLine("\t--host host base Url (i.e. https://www.microsoft.com) (required)");
+            Console.WriteLine("\t[--files file1 [file2 file3 ...]] one or more test json files (default baseline.json)");
+            Console.WriteLine("\t[--timeout] HTTP request timeout in seconds (default 30 sec)");
+            Console.WriteLine("\t[--sleep] number of milliseconds to sleep between requests (default 0)");
+            Console.WriteLine("\t[--duration] duration in seconds (default forever)");
+            Console.WriteLine("\t[--verbose] turn on verbose logging (default true)");
+            Console.WriteLine("\t[--telemetry appName key] App Insights information (default null)");
+            Console.WriteLine("\t[--runloop] runs the test in a continuous loop");
             Console.WriteLine("\tLoop Mode Parameters");
-            Console.WriteLine("\t\t--sleep number of milliseconds to sleep between requests (default 1000)");
-            Console.WriteLine("\t\t--maxconcurrent max concurrent requests (default 100");
-            Console.WriteLine("\t\t--random randomize requests");
-            Console.WriteLine("\t\t--verbose turn on verbose logging");
+            Console.WriteLine("\t\t[--sleep] number of milliseconds to sleep between requests (default 1000)");
+            Console.WriteLine("\t\t[--maxconcurrent] max concurrent requests (default 100)");
+            Console.WriteLine("\t\t[--random] randomize requests (default false)");
+            Console.WriteLine("\t\t[--verbose] turn on verbose logging (default false)");
         }
     }
 }
