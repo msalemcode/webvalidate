@@ -1,6 +1,5 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.Metrics;
 using System;
 using System.Collections.Generic;
 
@@ -65,27 +64,25 @@ namespace WebValidationTest
             {
                 try
                 {
+                    // track duration by app name as well
+                    string appDurationLabel = durationLabel + "-" + TelemetryAppName;
+
                     // track the custom event
                     TelemetryClient.TrackEvent("WebValidationTest",
-                        new Dictionary<string, string> { 
-                            { appLabel, TelemetryAppName }, 
+                        new Dictionary<string, string> {
+                            { appLabel, TelemetryAppName },
                             { categoryLabel, category },
                             { pathLabel, path },
                             { messageLabel, message }
                         },
                         new Dictionary<string, double> {
                             { durationLabel, duration },
-                            { statusLabel, status }, 
-                            { quartileLabel, perfLevel }, 
+                            { appDurationLabel, duration },
+                            { statusLabel, status },
+                            { quartileLabel, perfLevel },
                             { validatedLabel, validated ? 1 : 0 },
                             { contentLengthLabel, contentLength }
                         });
-
-
-                    // aggregate the duration metrics
-                    string appDuration = durationLabel + "-" + TelemetryAppName;
-                    TelemetryClient.GetMetric(durationLabel, appLabel, categoryLabel).TrackValue(duration, TelemetryAppName, category);
-                    TelemetryClient.GetMetric(appDuration, categoryLabel).TrackValue(duration, category);
                 }
                 catch (Exception ex)
                 {

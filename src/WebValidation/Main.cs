@@ -304,12 +304,12 @@ namespace WebValidation
             // end and dispose of the timer
             if (timer != null)
             {
-              timer.Dispose();
+                timer.Dispose();
             }
-            
+
             if (logTimer != null)
             {
-              logTimer.Dispose();
+                logTimer.Dispose();
             }
         }
 
