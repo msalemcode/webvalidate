@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -13,7 +14,7 @@ namespace WebValidation
         /// </summary>
         /// <param name="fileList">list of files to load</param>
         /// <returns>sorted List or Requests</returns>
-        private List<Request> LoadRequests(List<string> fileList)
+        private List<Request> LoadValidateRequests(List<string> fileList)
         {
             List<Request> list;
             List<Request> fullList = new List<Request>();
@@ -23,20 +24,21 @@ namespace WebValidation
             {
                 list = ReadJson(inputFile);
 
+                // add contents to full list
                 if (list != null && list.Count > 0)
                 {
                     fullList.AddRange(list);
                 }
             }
 
-            // throw exception if can't read the json files
-            if (fullList == null || fullList.Count == 0)
+            // return null if can't read and validate the json files
+            if (fullList == null || fullList.Count == 0 || !ValidateJson(fullList))
             {
-                throw new FileLoadException("Unable to read input files");
+                return null;
             }
 
             // return sorted list
-            return fullList.OrderBy(x => x.SortOrder).ThenBy(x => x.Index).ToList();
+            return fullList;
         }
 
         /// <summary>
@@ -105,11 +107,10 @@ namespace WebValidation
                             }
                         }
 
-                        r.Index = l2.Count;
                         l2.Add(r);
                     }
                     // success
-                    return l2.OrderBy(x => x.SortOrder).ThenBy(x => x.Index).ToList();
+                    return l2;
                 }
 
                 Console.WriteLine("Invalid JSON file");
@@ -122,6 +123,27 @@ namespace WebValidation
 
             // couldn't read the list
             return null;
+        }
+
+        /// <summary>
+        /// Validate all of the requests
+        /// </summary>
+        /// <param name="requests">list of Request</param>
+        /// <returns></returns>
+        private static bool ValidateJson(List<Request> requests)
+        {
+            // validate each request
+            foreach (Request r in requests)
+            {
+                if (!r.Validate(out string message))
+                {
+                    Console.WriteLine($"Error: Invalid json\n\t{JsonConvert.SerializeObject(r, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })}\n\t{message}");
+                    return false;
+                }
+            }
+
+            // validated
+            return true;
         }
     }
 }

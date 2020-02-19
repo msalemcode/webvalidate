@@ -47,7 +47,6 @@ namespace WebValidationTest
             {
                 if (!WebV.RunOnce(Config).Result)
                 {
-                    Usage();
                     Environment.Exit(-1);
                 }
 

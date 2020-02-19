@@ -45,7 +45,12 @@ namespace WebValidation
             Targets = LoadPerfTargets();
 
             // load the requests from json files
-            _requestList = LoadRequests(config.FileList);
+            _requestList = LoadValidateRequests(config.FileList);
+
+            if (_requestList == null || _requestList.Count == 0)
+            {
+                Environment.Exit(-1);
+            }
         }
 
         /// <summary>

@@ -1,0 +1,32 @@
+[
+  {"Url":"/version","Validation":{"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=foo","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=-1","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=0","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=1","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=2021","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?year=1989","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?pagesize=1001","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"Count":1001}}},
+
+  {"Url":"/api/movies?pagesize=0","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?pagesize=-1","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?pagenumber=0","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?pagenumber=-1","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?pagenumber=100000","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?pagenumber=9000000000000","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?pagesize=1000&pagenumber=1000","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?pagesize=5&pagenumber=2","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","Contains": [{"Value": "tt0115438"}],"JsonArray":{"Count":5}}},
+
+  {"Url":"/api/movies/ab0120737","PerfTarget":{"Category": "DirectRead"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies/tt123","PerfTarget":{"Category": "DirectRead"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies/foo","PerfTarget":{"Category": "DirectRead"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+
+  {"Url":"/api/movies?actorid=nm123","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?actorid=ab123","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+  {"Url":"/api/movies?actorid=foo","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":400,"ContentType":"text/plain"}},
+]

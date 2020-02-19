@@ -199,25 +199,19 @@ namespace WebValidation
                     List<dynamic> resList = JsonConvert.DeserializeObject<List<dynamic>>(body) as List<dynamic>;
 
                     // validate count
-                    if (r.Validation.JsonArray.Count > 0 && r.Validation.JsonArray.Count != resList.Count)
+                    if (r.Validation.JsonArray.Count != resList.Count)
                     {
-                        res += string.Format(CultureInfo.InvariantCulture, $"\tJsonCount: {r.Validation.JsonArray.Count}  Actual: {resList.Count}\n");
-                    }
-
-                    // validate count is zero
-                    if (r.Validation.JsonArray.CountIsZero && 0 != resList.Count)
-                    {
-                        res += string.Format(CultureInfo.InvariantCulture, $"\tJsonCountIsZero: Actual: {resList.Count}\n");
+                        res += string.Format(CultureInfo.InvariantCulture, $"\tJsonArrayCount: {resList.Count} Expected: {r.Validation.JsonArray.Count}\n");
                     }
 
                     // validate min count
-                    if (r.Validation.JsonArray.MinCount > 0 && r.Validation.JsonArray.MinCount > resList.Count)
+                    if (r.Validation.JsonArray.MinCount >= 0 && r.Validation.JsonArray.MinCount > resList.Count)
                     {
                         res += string.Format(CultureInfo.InvariantCulture, $"\tMinJsonCount: {r.Validation.JsonArray.MinCount}  Actual: {resList.Count}\n");
                     }
 
                     // validate max count
-                    if (r.Validation.JsonArray.MaxCount > 0 && r.Validation.JsonArray.MaxCount < resList.Count)
+                    if (r.Validation.JsonArray.MaxCount > r.Validation.JsonArray.MinCount && r.Validation.JsonArray.MaxCount < resList.Count)
                     {
                         res += string.Format(CultureInfo.InvariantCulture, $"\tMaxJsonCount: {r.Validation.JsonArray.MaxCount}  Actual: {resList.Count}\n");
                     }

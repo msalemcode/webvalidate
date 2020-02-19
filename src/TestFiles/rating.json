@@ -7,5 +7,5 @@
   {"Url":"/api/movies?rating=8.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"Count":20}}},
   {"Url":"/api/movies?rating=8.8","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"Count":6}}},
   {"Url":"/api/movies?rating=8.9","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"Count":3}}},
-  {"Url":"/api/movies?rating=9.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"CountIsZero":true}}},
+  {"Url":"/api/movies?rating=9.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Code":200,"ContentType":"application/json","JsonArray":{"Count":0}}},
 ]

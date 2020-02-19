@@ -7,8 +7,6 @@ assignees: ''
 
 ---
 
-_This template is for capturing details needed for Design Review._  
-
 # Design Review
 
 ## Introduction
