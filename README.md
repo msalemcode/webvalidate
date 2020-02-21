@@ -11,6 +11,12 @@ docker run -it --rm retaildevcrew/webvalidate --host https://www.microsoft.com -
 
 ```
 
+Optionally you can run the test a sample [IMDB Movie API](https://github.com/retaildevcrews/helium) hosted at `https://froyo.azurewebsites.net` by using:
+
+```bash
+docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files baseline.json
+```
+
 ## Test Validation Files
 
 Validation files are located in the src/TestFiles directory and are json files that control the validation tests.
