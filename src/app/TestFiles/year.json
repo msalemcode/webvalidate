@@ -1,0 +1,12 @@
+[
+  {"Path":"/api/movies?year=1999","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":39}}},
+  {"Path":"/api/movies?year=2000","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":47}}},
+  {"Path":"/api/movies?year=2001","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":48}}},
+  {"Path":"/api/movies?year=2002","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":53}}},
+  {"Path":"/api/movies?year=2003","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":60}}},
+  {"Path":"/api/movies?year=2004","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":56}}},
+  {"Path":"/api/movies?year=2005","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":56}}},
+  {"Path":"/api/movies?year=2006","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":51}}},
+  {"Path":"/api/movies?year=2007","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":49}}},
+  {"Path":"/api/movies?year=2009","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":44}}},
+]

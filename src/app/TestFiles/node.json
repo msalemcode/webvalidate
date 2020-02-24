@@ -1,0 +1,5 @@
+[
+    {"Path":"/swagger.json","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"openapi","Value":null},{"Field":"info","Value":null},{"Field":"paths","Value":null},{"Field":"components","Value":null}]}},
+    {"Path": "/robots.txt","PerfTarget":{"Category": "static"},"Validation": {"ContentType": "text/plain","MinLength": 48,"MaxLength": 48,"Contains": [{"Value": "User-agent: *"},{"Value": "Disallow: /"}]}},
+    {"Path": "/robots1234.txt","PerfTarget":{"Category": "static"},"Validation": {"ContentType": "text/plain","MinLength": 48,"MaxLength": 48,"Contains": [{"Value": "User-agent: *"},{"Value": "Disallow: /"}]}},
+]

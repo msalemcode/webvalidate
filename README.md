@@ -1,8 +1,13 @@
-# webvalidate - A web request validation testing tool
+# webvalidate - A web request validation tool
 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![build](https://github.com/retaildevcrews/webvalidate/workflows/dockerCI/badge.svg)
 
-Run the sample Validation Test against ```microsoft.com```
+Web Validate (webv for short) is a web request validation tool that we use to run integration tests and long-running smoke tests.
+
+## Try webv out
+
+Run a sample Validation Test against `microsoft.com`
 
 ```bash
 
@@ -11,15 +16,46 @@ docker run -it --rm retaildevcrew/webvalidate --host https://www.microsoft.com -
 
 ```
 
-Optionally you can run the test a sample [IMDB Movie API](https://github.com/retaildevcrews/helium) hosted at `https://froyo.azurewebsites.net` by using:
+Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
 
 ```bash
+
+# baseline tests
 docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files baseline.json
+
+# dotnet specific tests
+docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files dotnet.json
+
+# long running benchmark test
+docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files benchmark.json
+
 ```
 
-## Test Validation Files
+Experiment with WebV
 
-Validation files are located in the src/TestFiles directory and are json files that control the validation tests.
+```bash
+
+# get help
+docker run -it --rm retaildevcrew/webvalidate --help
+
+```
+
+Use your own test files
+
+```bash
+
+# assuming you want to mount ~/t to the containers /app/TestFiles
+# this will start bash so you can verify the mount worked correctly
+# remove "--entrypoint bash" and add proper parameters to run webv
+docker run -it --rm -v ~/t:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
+
+```
+
+## Validation Files
+
+Validation files are located in the /app/TestFiles directory and are json files that control the validation tests.
+
+You can mount a local volume into the Docker container at /app/TestFiles to test your files against your server if you don't want to rebuild the container
 
 - HTTP redirects are not followed
 - The test files must parse and validate or no tests will be executed
@@ -103,9 +139,9 @@ Validation files are located in the src/TestFiles directory and are json files t
   - Targets[3]
     - maximum quartile value in ascending order
 
-## Sample ```microsoft.com``` validation tests
+## Sample `microsoft.com` validation tests
 
-The msft.json file contains sample validation tests that will will successfully run against the ```https://www.microsoft.com/``` endpoint (assuming content hasn't changed)
+The msft.json file contains sample validation tests that will will successfully run against the `microsoft.com` endpoint (assuming content hasn't changed)
 
 - note that http status codes are not specified when 200 is expected
 - note that ContentType is not specified when the default of application/json is expected

@@ -12,8 +12,12 @@ FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build
 # Copy the source
 COPY src /src
 
-WORKDIR /src
- 
+### Run the unit tests
+WORKDIR /src/unit-tests
+RUN dotnet test --logger:trx
+
+### Build the release app
+WORKDIR /src/app
 RUN dotnet publish -c Release -o /app
 
 ###########################################################
