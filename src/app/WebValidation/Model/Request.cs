@@ -61,7 +61,7 @@ namespace WebValidation.Model
             }
 
             //validate lengths
-            if (!ValidateLengths(out message))
+            if (!ValidateLength(out message))
             {
                 return false;
             }
@@ -70,6 +70,12 @@ namespace WebValidation.Model
             if (Validation.MaxMilliseconds != null && Validation.MaxMilliseconds <= 0)
             {
                 message = "maxMilliseconds: maxMilliseconds cannot be less than zero";
+                return false;
+            }
+
+            // validate Contains
+            if (!ValidateContains(out message))
+            {
                 return false;
             }
 
@@ -130,7 +136,7 @@ namespace WebValidation.Model
         ///</summary>
         /// <param name="message">error message</param>
         /// <returns>bool success (out message)</returns>
-        private bool ValidateLengths(out string message)
+        private bool ValidateLength(out string message)
         {
 
             // validate Length
@@ -193,6 +199,35 @@ namespace WebValidation.Model
         }
 
         /// <summary>
+        /// validate Contains
+        /// </summary>
+        /// <param name="message">out string error message</param>
+        /// <returns></returns>
+        private bool ValidateContains(out string message)
+        {
+            // null check
+            if (Validation.Contains == null || Validation.Contains.Count == 0)
+            {
+                message = string.Empty;
+                return true;
+            }
+
+            // validate each value
+            foreach (var c in Validation.Contains)
+            {
+                if (string.IsNullOrEmpty(c))
+                {
+                    message = "contains: values cannot be empty";
+                    return false;
+                }
+            }
+
+            // validated
+            message = string.Empty;
+            return true;
+        }
+
+        /// <summary>
         /// validate request path
         /// </summary>
         /// <param name="path">string</param>
@@ -245,5 +280,7 @@ namespace WebValidation.Model
             message = string.Empty;
             return true;
         }
+
+
     }
 }

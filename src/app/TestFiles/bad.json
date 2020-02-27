@@ -20,7 +20,7 @@
 
   {"Path":"/api/movies?pagesize=1000&pagenumber=1000","PerfTarget":{"Category": "SearchMovies"},"Validation":{"StatusCode":400,"ContentType":"text/plain"}},
 
-  {"Path":"/api/movies?pagesize=5&pagenumber=2","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Contains": [{"Value": "tt0115438"}],"JsonArray":{"Count":5}}},
+  {"Path":"/api/movies?pagesize=5&pagenumber=2","PerfTarget":{"Category": "SearchMovies"},"Validation":{"Contains": ["tt0115438"],"JsonArray":{"Count":5}}},
 
   {"Path":"/api/movies/ab0120737","PerfTarget":{"Category": "DirectRead"},"Validation":{"StatusCode":400,"ContentType":"text/plain"}},
   {"Path":"/api/movies/tt123","PerfTarget":{"Category": "DirectRead"},"Validation":{"StatusCode":400,"ContentType":"text/plain"}},

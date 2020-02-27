@@ -1,7 +1,7 @@
 # webvalidate - A web request validation tool
 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![build](https://github.com/retaildevcrews/webvalidate/workflows/dockerCI/badge.svg)
+![Docker Image Build](https://github.com/retaildevcrews/webvalidate/workflows/Docker%20Image%20Build/badge.svg)
 
 Web Validate (webv for short) is a web request validation tool that we use to run integration tests and long-running smoke tests.
 

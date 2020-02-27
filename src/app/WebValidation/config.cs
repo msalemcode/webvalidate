@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using WebValidation;
 
 namespace WebValidation
 {
@@ -22,6 +21,7 @@ namespace WebValidation
         public string TelemetryKey { get; set; }
         public string TelemetryApp { get; set; }
         public List<string> FileList { get; } = new List<string>();
+        public int MaxErrors { get; set; } = 10;
 
         public WebVMetrics Metrics
         {

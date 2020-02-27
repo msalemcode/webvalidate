@@ -82,6 +82,7 @@ namespace WebValidation
             int duration;
             DateTime dt;
             PerfLog pl;
+            int errorCount = 0;
 
             // send each request
             foreach (Request r in _requestList)
@@ -92,6 +93,20 @@ namespace WebValidation
 
                     pl = await ExecuteRequest(r).ConfigureAwait(false);
 
+                    if (!pl.IsValid)
+                    {
+                        isError = true;
+
+                        errorCount++;
+
+                        // stop after MaxErrors errors
+                        if (errorCount >= config.MaxErrors)
+                        {
+                            break;
+                        }
+                    }
+
+                    // sleep if configured
                     if (config.SleepMs > 0)
                     {
                         duration = config.SleepMs - (int)pl.Duration;
@@ -110,7 +125,13 @@ namespace WebValidation
                 }
             }
 
-            return isError;
+            // display error count
+            if (errorCount > 0)
+            {
+                Console.WriteLine($"Errors: {errorCount}");
+            }
+
+            return !isError;
         }
 
         /// <summary>
@@ -342,10 +363,10 @@ namespace WebValidation
                 double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
 
                 // validate the response
-                string res = ValidateAll(request, resp, body);
+                bool valid = ValidateAll(request, resp, body, out string res);
 
                 // check the performance
-                perfLog = CreatePerfLog(request, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
+                perfLog = CreatePerfLog(request, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode, valid);
             }
 
             // log the test
@@ -370,7 +391,7 @@ namespace WebValidation
         /// <param name="contentLength">content length</param>
         /// <param name="statusCode">status code</param>
         /// <returns></returns>
-        public PerfLog CreatePerfLog(Request request, string validationResults, double duration, string body, long contentLength, int statusCode)
+        public PerfLog CreatePerfLog(Request request, string validationResults, double duration, string body, long contentLength, int statusCode, bool isValid)
         {
             // map the parameters
             PerfLog log = new PerfLog
@@ -382,7 +403,8 @@ namespace WebValidation
                 Body = body,
                 Duration = duration,
                 ContentLength = contentLength,
-                PerfLevel = 0
+                PerfLevel = 0,
+                IsValid = isValid
             };
 
             // determine the Performance Level based on category

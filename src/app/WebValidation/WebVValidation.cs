@@ -18,9 +18,9 @@ namespace WebValidation
         /// <param name="resp">HttpResponseMessage</param>
         /// <param name="body">string</param>
         /// <returns>string</returns>
-        public static string ValidateAll(Request r, HttpResponseMessage resp, string body)
+        public static bool ValidateAll(Request r, HttpResponseMessage resp, string body, out string res)
         {
-            string res = string.Empty;
+            res = string.Empty;
 
             // validate the response
             if (resp != null && r?.Validation != null)
@@ -29,24 +29,30 @@ namespace WebValidation
 
                 res += ValidateStatusCode(r, resp);
 
-                // don't validate if status code is incorrect
-                if (string.IsNullOrEmpty(res))
+                // fail if invalid
+                if (!string.IsNullOrEmpty(res))
                 {
-                    res += ValidateContentType(r, resp);
+                    return false;
                 }
 
-                // don't validate if content-type is incorrect
-                if (string.IsNullOrEmpty(res))
+                // validate ContentType
+                res += ValidateContentType(r, resp);
+
+                // fail if invalid
+                if (!string.IsNullOrEmpty(res))
                 {
-                    res += ValidateContentLength(r, resp);
-                    res += ValidateContains(r, body);
-                    res += ValidateExactMatch(r, body);
-                    res += ValidateJsonArray(r, body);
-                    res += ValidateJsonObject(r, body);
+                    return false;
                 }
+
+                // run validation rules
+                res += ValidateContentLength(r, resp);
+                res += ValidateContains(r, body);
+                res += ValidateExactMatch(r, body);
+                res += ValidateJsonArray(r, body);
+                res += ValidateJsonObject(r, body);
             }
 
-            return res;
+            return true;
         }
 
         // validate the status code
@@ -169,12 +175,12 @@ namespace WebValidation
             if (!string.IsNullOrEmpty(body) && r.Validation.Contains != null && r.Validation.Contains.Count > 0)
             {
                 // validate each rule
-                foreach (ValueCheck c in r.Validation.Contains)
+                foreach (string c in r.Validation.Contains)
                 {
                     // compare values
-                    if (!body.Contains(c.Value, c.IsCaseSensitive ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture))
+                    if (!body.Contains(c, StringComparison.InvariantCulture))
                     {
-                        res += string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.Value.PadRight(40).Substring(0, 40).Trim()}\n");
+                        res += string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}\n");
                     }
                 }
             }

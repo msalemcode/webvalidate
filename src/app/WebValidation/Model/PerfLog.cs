@@ -13,5 +13,6 @@ namespace WebValidation.Model
         public double Duration { get; set; }
         public int StatusCode { get; set; }
         public long ContentLength { get; set; }
+        public bool IsValid { get; set; }
     }
 }

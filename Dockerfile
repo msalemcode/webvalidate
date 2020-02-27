@@ -20,7 +20,19 @@ RUN dotnet test --logger:trx
 WORKDIR /src/app
 RUN dotnet publish -c Release -o /app
 
+### Run end-to-end tests
+### run as separate steps to make debugging failures easier
+WORKDIR /app
+RUN dotnet webvalidate.dll --host bluebell --files dotnet.json baseline.json featured.json genres.json moviesByActorId.json rating.json search.json year.json
+RUN dotnet webvalidate.dll --host froyo    --files dotnet.json baseline.json featured.json genres.json moviesByActorId.json rating.json search.json year.json
+RUN dotnet webvalidate.dll --host sherbert --files node.json   baseline.json featured.json genres.json moviesByActorId.json rating.json search.json year.json
+#RUN dotnet webvalidate.dll --host gelato   --files java.json   baseline.json featured.json genres.json moviesByActorId.json rating.json search.json year.json
+RUN dotnet webvalidate.dll --host bluebell --files actorById.json --sleep 50
+#RUN dotnet webvalidate.dll --host gelato   --files benchmark.json --sleep 50
+RUN dotnet webvalidate.dll --host bluebell --files movieById.json --sleep 50
+    
 ###########################################################
+
 
 ### build the runtime container
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1 AS runtime
