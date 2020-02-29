@@ -1,7 +1,6 @@
-using System;
 using Xunit;
 
-namespace unit_tests
+namespace UnitTests
 {
     public class TestJsonRead
     {

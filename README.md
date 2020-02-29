@@ -3,9 +3,9 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Docker Image Build](https://github.com/retaildevcrews/webvalidate/workflows/Docker%20Image%20Build/badge.svg)
 
-Web Validate (webv for short) is a web request validation tool that we use to run integration tests and long-running smoke tests.
+Web Validate (webv) is a web request validation tool that we use to run integration tests and long-running smoke tests.
 
-## Try webv out
+## webv Quick Start
 
 Run a sample Validation Test against `microsoft.com`
 

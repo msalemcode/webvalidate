@@ -8,4 +8,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "json serialization requires setter", Scope = "type", Target = "WebValidation.Request")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "json serialization requires setter", Scope = "type", Target = "WebValidation.Model.PerfTarget")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "json serialization requires setter", Scope = "type", Target = "WebValidation.Model.Validation")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only", Justification = "json serialization requires setter", Scope = "type", Target = "WebValidation.Model.JsonArray")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "handled in IDispose", Scope = "type", Target = "WebValidation.WebV")]

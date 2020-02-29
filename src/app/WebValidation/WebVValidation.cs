@@ -198,12 +198,12 @@ namespace WebValidation
 
             string res = string.Empty;
 
-            if (r.Validation.JsonArray != null)
+            if (r.Validation.JsonArray != null && !string.IsNullOrWhiteSpace(body))
             {
                 try
                 {
                     // deserialize the json
-                    List<dynamic> resList = JsonConvert.DeserializeObject<List<dynamic>>(body) as List<dynamic>;
+                    List<ExpandoObject> resList = JsonConvert.DeserializeObject<List<ExpandoObject>>(body);
 
                     // validate count
                     if (r.Validation.JsonArray.Count != null && r.Validation.JsonArray.Count != resList.Count)
@@ -221,6 +221,104 @@ namespace WebValidation
                     if (r.Validation.JsonArray.MaxCount != null && r.Validation.JsonArray.MaxCount < resList.Count)
                     {
                         res += string.Format(CultureInfo.InvariantCulture, $"\tMaxJsonCount: {r.Validation.JsonArray.MaxCount}  Actual: {resList.Count}\n");
+                    }
+
+                    if (r.Validation.JsonArray.ForEach != null && r.Validation.JsonArray.ForEach.Count > 0)
+                    {
+                        foreach(dynamic doc in resList)
+                        {
+                            IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(JsonConvert.SerializeObject(doc));
+
+                            foreach (var fe in r.Validation.JsonArray.ForEach)
+                            {
+                                if (fe.JsonObject != null && fe.JsonObject.Count > 0)
+                                {
+                                    foreach (var p in fe.JsonObject)
+                                    {
+                                        if (!string.IsNullOrEmpty(p.Field) && dict.ContainsKey(p.Field))
+                                        {
+                                            if (p.Value != null && !dict[p.Field].Equals(p.Value))
+                                            {
+                                                res += string.Format(CultureInfo.InvariantCulture, $"\tjson: {p.Field}: {doc[p.Field]} : Expected: {p.Value}\n");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            res += string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {p.Field}\n");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (r.Validation.JsonArray.ByIndex != null && r.Validation.JsonArray.ByIndex.Count > 0)
+                    {
+                        foreach (var p in r.Validation.JsonArray.ByIndex)
+                        {
+                            // null is not an error
+                            if (p.Validation == null)
+                            {
+                                break;
+                            }
+
+                            // check index in bounds
+                            if (p.Index < 0 || p.Index >= resList.Count)
+                            {
+                                res += string.Format(CultureInfo.InvariantCulture, $"\byIndex: Index out of bounds: {p.Index}\n");
+                                break;
+                            }
+
+                            // validate JsonObject list
+                            if (p.Validation.JsonObject != null && p.Validation.JsonObject.Count > 0)
+                            {
+                                // convert to dictionary
+                                IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(JsonConvert.SerializeObject(resList[(int)p.Index]));
+
+                                // featureFlag - simple implementation - should recursively call validation
+                                // currently only validates JsonObjects
+                                foreach (var f in p.Validation.JsonObject)
+                                {
+                                    if (!string.IsNullOrEmpty(f.Field) && dict.ContainsKey(f.Field))
+                                    {
+                                        if (f.Value != null && !dict[f.Field].Equals(f.Value))
+                                        {
+                                            res += string.Format(CultureInfo.InvariantCulture, $"\tjson: {f.Field}: {dict[f.Field]} : Expected: {f.Value}\n");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        res += string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {f.Field}\n");
+                                    }
+                                }
+                            }
+
+                            if (p.Validation.JsonArray != null && !string.IsNullOrWhiteSpace(p.Field))
+                            {
+                                dynamic obj = resList[(int)p.Index];
+
+                                foreach (KeyValuePair<string,object> fld in obj)
+                                {
+                                    if (fld.Key == p.Field)
+                                    {
+                                        // convert to dictionary
+                                        //IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(JsonConvert.SerializeObject(fld));
+
+                                        if (p.Field == "genres" && p.Validation.JsonArray.Count != null)
+                                        {
+                                            List<object> g = fld.Value as List<object>;
+
+                                            if (g.Count != p.Validation.JsonArray.Count)
+                                            {
+                                                res += string.Format(CultureInfo.InvariantCulture, $"\tjsonArray: Count: {g.Count}: Expected: {p.Validation.JsonArray.Count}\n");
+                                            }
+                                        }
+
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 catch (SerializationException se)

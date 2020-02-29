@@ -16,10 +16,4 @@ namespace WebValidation.Model
         public List<JsonProperty> JsonObject { get; set; }
         public PerfTarget PerfTarget { get; set; }
     }
-
-    public class ValueCheck
-    {
-        public string Value { get; set; }
-        public bool IsCaseSensitive { get; set; } = true;
-    }
 }

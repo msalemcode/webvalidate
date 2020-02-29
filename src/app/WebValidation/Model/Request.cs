@@ -213,7 +213,7 @@ namespace WebValidation.Model
             }
 
             // validate each value
-            foreach (var c in Validation.Contains)
+            foreach (string c in Validation.Contains)
             {
                 if (string.IsNullOrEmpty(c))
                 {

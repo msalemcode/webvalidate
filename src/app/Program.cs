@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,48 +6,72 @@ using WebValidation;
 
 namespace WebValidationApp
 {
-    public sealed class App
+    public sealed class App : IDisposable
     {
         // public properties
-        public static WebValidation.WebV WebV { get; set; }
-        public static Config Config { get; } = new Config();
-        public static List<Task> Tasks { get; } = new List<Task>();
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
+        public Config Config { get; } = new Config();
 
         /// <summary>
         /// Main entry point
         /// </summary>
         /// <param name="args">Command Line Parms</param>
-        public static void Main(string[] args)
+        public static int Main(string[] args)
         {
-            // should never be null but just in case
+            // should never be null
             if (args == null)
             {
                 args = Array.Empty<string>();
             }
 
-            ProcessEnvironmentVariables();
-
-            ProcessCommandArgs(args);
-
-            // this will exit(-1) if params aren't correct
-            ValidateParameters();
-
-            // create the test
-            WebV = new WebValidation.WebV(Config);
-
-            // run one test iteration
-            if (!Config.RunLoop)
+            // display help
+            if (CheckCommandLineHelp(args))
             {
-                if (!WebV.RunOnce(Config).Result)
-                {
-                    Environment.Exit(-1);
-                }
-
-                return;
+                Usage();
+                return 0;
             }
 
-            // setup ctl c handler
+            // add ctl-c handler
+            AddControlCHandler();
+
+            // run the app
+            using App app = new App();
+            return app.Run(args);
+        }
+
+        public int Run(string[] args)
+        {
+            // validate parameters
+            if (!ProcessEnvironmentVariables() ||
+                !ProcessCommandArgs(args) ||
+                !ValidateParameters())
+            {
+                Usage();
+                return -1;
+            }
+
+            // create the test
+            using WebV webv = new WebValidation.WebV(Config);
+
+            // run in a loop
+            if (Config.RunLoop)
+            {
+                webv.RunLoop(Config, TokenSource.Token);
+            }
+            else
+            {
+                // run one iteration
+                return webv.RunOnce(Config).Result ? 0 : -1;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Add a ctl-c handler
+        /// </summary>
+        private static void AddControlCHandler()
+        {
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
             {
                 e.Cancel = true;
@@ -62,22 +85,18 @@ namespace WebValidationApp
                 // end the app
                 Environment.Exit(0);
             };
-
-            // run in a loop
-            WebV.RunLoop(Config, TokenSource.Token);
         }
 
         /// <summary>
-        /// Validate env vars and command line have valid values
+        /// Validate env vars and command line
         /// </summary>
-        private static void ValidateParameters()
+        public bool ValidateParameters()
         {
             // host is required
             if (string.IsNullOrWhiteSpace(Config.Host))
             {
                 Console.WriteLine(Constants.HostMissingMessage);
-                Usage();
-                Environment.Exit(-1);
+                return false;
             }
 
             // make it easier to pass host
@@ -94,15 +113,33 @@ namespace WebValidationApp
             }
 
             // validate additional parameters
-            ValidateRunOnceParameters();
-            ValidateRunLoopParameters();
-            ValidateFileList();
+            if (!ValidateRunOnceParameters())
+            {
+                return false;
+            }
+
+            if (!ValidateRunLoopParameters())
+            {
+                return false;
+            }
+
+            if (!ValidateFileList())
+            {
+                return false;
+            }
+
+            if (!ValidateSharedParameters())
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
         /// Validate at least one test file exists
         /// </summary>
-        private static void ValidateFileList()
+        public bool ValidateFileList()
         {
             // Add the default file if none specified
             if (Config.FileList.Count == 0)
@@ -117,9 +154,7 @@ namespace WebValidationApp
             {
                 f = Config.FileList[i];
 
-                string file = TestFileExists(f.Trim('\'', '\"', ' '));
-
-                if (System.IO.File.Exists(file))
+                if (TestFileExists(f.Trim('\'', '\"', ' '), out string file))
                 {
                     Config.FileList[i] = file;
                 }
@@ -134,15 +169,43 @@ namespace WebValidationApp
             if (Config.FileList.Count == 0)
             {
                 Console.WriteLine(Constants.NoFilesFoundMessage);
-                Usage();
-                Environment.Exit(-1);
+                return false;
             }
+
+            return true;
         }
 
         /// <summary>
-        /// Validate the parameters if --runloop not specified
+        /// Validate shared parameters (RunOnce and RunLoop)
         /// </summary>
-        private static void ValidateRunOnceParameters()
+        public bool ValidateSharedParameters()
+        {
+            // validate request timeout
+            if (Config.RequestTimeout < 1)
+            {
+                Console.WriteLine(Constants.RequestTimeoutParameterError, Config.RequestTimeout);
+                return false;
+            }
+
+            // validate telemetry
+            if (!string.IsNullOrEmpty(Config.TelemetryKey) || !string.IsNullOrEmpty(Config.TelemetryApp))
+            {
+                // both or neither have to be specified
+                if (string.IsNullOrEmpty(Config.TelemetryKey) || string.IsNullOrEmpty(Config.TelemetryApp))
+                {
+                    Console.WriteLine(Constants.TelemetryParameterError, Config.TelemetryApp, Config.TelemetryKey);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+
+        /// <summary>
+        /// Validate RunOnce parameters
+        /// </summary>
+        public bool ValidateRunOnceParameters()
         {
             if (!Config.RunLoop)
             {
@@ -156,15 +219,13 @@ namespace WebValidationApp
                 if (Config.Duration > 0)
                 {
                     Console.WriteLine(Constants.RunLoopMessage, "duration");
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
 
                 if (Config.Random)
                 {
                     Console.WriteLine(Constants.RunLoopMessage, "random");
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
 
                 // -1 means was not specified
@@ -178,8 +239,7 @@ namespace WebValidationApp
             if (Config.RequestTimeout < 1)
             {
                 Console.WriteLine(Constants.RequestTimeoutParameterError, Config.RequestTimeout);
-                Usage();
-                Environment.Exit(-1);
+                return false;
             }
 
             // validate telemetry
@@ -189,16 +249,17 @@ namespace WebValidationApp
                 if (string.IsNullOrEmpty(Config.TelemetryKey) || string.IsNullOrEmpty(Config.TelemetryApp))
                 {
                     Console.WriteLine(Constants.TelemetryParameterError, Config.TelemetryApp, Config.TelemetryKey);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
+
+            return true;
         }
 
         /// <summary>
         /// Validate parameters if --runloop specified
         /// </summary>
-        private static void ValidateRunLoopParameters()
+        public bool ValidateRunLoopParameters()
         {
             if (Config.RunLoop)
             {
@@ -218,52 +279,64 @@ namespace WebValidationApp
                 if (Config.MaxConcurrentRequests < 1)
                 {
                     Console.WriteLine(Constants.MaxConcurrentParameterError, Config.MaxConcurrentRequests);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
 
                 // must be >= 0
                 if (Config.SleepMs < 0)
                 {
                     Console.WriteLine(Constants.SleepParameterError, Config.SleepMs);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
 
                 // can't be less than 0
                 if (Config.Duration < 0)
                 {
                     Console.WriteLine(Constants.DurationParameterError, Config.Duration);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
+
+            return true;
         }
 
         /// <summary>
-        /// Validate the command line params
+        /// Check command line for --help
         /// </summary>
         /// <param name="args">string[]</param>
-        private static void ProcessCommandArgs(string[] args)
+        public static bool CheckCommandLineHelp(string[] args)
         {
-            const string invalidArgsMessage = "\nInvalid argument: {0}\n";
-
             // show usage
             if (args == null || args.Length == 0 || args[0] == ArgKeys.Help || args[0] == ArgKeys.HelpShort)
             {
-                Usage();
-                Environment.Exit(0);
+                return true;
             }
 
+            return false;
+        }
+
+        /// <summary>
+        /// Process command line params
+        /// </summary>
+        /// <param name="args">string[]</param>
+        public bool ProcessCommandArgs(string[] args)
+        {
+            if (args == null)
+            {
+                return false;
+            }
+
+            const string invalidArgsMessage = "\nInvalid argument: {0}\n";
             int i = 0;
 
+            // process the args
             while (i < args.Length)
             {
+                // all args start with --
                 if (!args[i].StartsWith("--", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine(invalidArgsMessage, args[i]);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
 
                 // handle run loop (--runloop)
@@ -345,8 +418,7 @@ namespace WebValidationApp
                         {
                             // exit on error
                             Console.WriteLine(Constants.SleepParameterError, args[i + 1]);
-                            Usage();
-                            Environment.Exit(-1);
+                            return false;
                         }
                     }
 
@@ -362,8 +434,7 @@ namespace WebValidationApp
                         {
                             // exit on error
                             Console.WriteLine(Constants.MaxConcurrentParameterError, args[i + 1]);
-                            Usage();
-                            Environment.Exit(-1);
+                            return false;
                         }
                     }
 
@@ -379,8 +450,7 @@ namespace WebValidationApp
                         {
                             // exit on error
                             Console.WriteLine(Constants.RequestTimeoutParameterError, args[i + 1]);
-                            Usage();
-                            Environment.Exit(-1);
+                            return false;
                         }
                     }
 
@@ -396,20 +466,21 @@ namespace WebValidationApp
                         {
                             // exit on error
                             Console.WriteLine(Constants.DurationParameterError, args[i + 1]);
-                            Usage();
-                            Environment.Exit(-1);
+                            return false;
                         }
                     }
                 }
 
                 i++;
             }
+
+            return true;
         }
 
         /// <summary>
         /// Process environment variables
         /// </summary>
-        private static void ProcessEnvironmentVariables()
+        public bool ProcessEnvironmentVariables()
         {
             string env = Environment.GetEnvironmentVariable(EnvKeys.RunLoop);
             if (!string.IsNullOrEmpty(env))
@@ -461,8 +532,7 @@ namespace WebValidationApp
                 {
                     // exit on error
                     Console.WriteLine(Constants.SleepParameterError, env);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
 
@@ -477,8 +547,7 @@ namespace WebValidationApp
                 {
                     // exit on error
                     Console.WriteLine(Constants.MaxConcurrentParameterError, env);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
 
@@ -493,8 +562,7 @@ namespace WebValidationApp
                 {
                     // exit on error
                     Console.WriteLine(Constants.RequestTimeoutParameterError, env);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
 
@@ -509,8 +577,7 @@ namespace WebValidationApp
                 {
                     // exit on error
                     Console.WriteLine(Constants.DurationParameterError, env);
-                    Usage();
-                    Environment.Exit(-1);
+                    return false;
                 }
             }
 
@@ -525,6 +592,8 @@ namespace WebValidationApp
             {
                 Config.TelemetryKey = env;
             }
+
+            return true;
         }
 
         /// <summary>
@@ -532,31 +601,34 @@ namespace WebValidationApp
         /// </summary>
         /// <param name="name">file name or path</param>
         /// <returns>full path to file or string.empty</returns>
-        private static string TestFileExists(string name)
+        public static bool TestFileExists(string name, out string file)
         {
-            string file = name.Trim();
-
-            if (!string.IsNullOrEmpty(file))
+            if (string.IsNullOrWhiteSpace(name))
             {
-                // add TestFiles directory if not specified (default location)
-                if (!file.StartsWith(Constants.TestFilePath, StringComparison.Ordinal))
-                {
-                    file = Constants.TestFilePath + file;
-                }
-
-                if (System.IO.File.Exists(file))
-                {
-                    return file;
-                }
+                file = string.Empty;
+                return false;
             }
 
-            return string.Empty;
+            file = name.Trim();
+
+            // add TestFiles directory if not specified (default location)
+            if (!file.StartsWith(Constants.TestFilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                file = Constants.TestFilePath + file;
+            }
+
+            if (System.IO.File.Exists(file))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
         /// Display command line usage
         /// </summary>
-        private static void Usage()
+        public static void Usage()
         {
             Console.WriteLine($"Version: {WebValidationApp.Version.AssemblyVersion}");
             Console.WriteLine();
@@ -575,6 +647,38 @@ namespace WebValidationApp
             Console.WriteLine("\t\t[--maxconcurrent] max concurrent requests (default 100)");
             Console.WriteLine("\t\t[--random] randomize requests (default false)");
             Console.WriteLine("\t\t[--verbose] turn on verbose logging (default false)");
+        }
+
+        // IDispose implementation
+        private bool disposedValue = false;
+
+        /// <summary>
+        /// Private Dispose
+        /// </summary>
+        /// <param name="disposing">bool</param>
+        void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (Config != null)
+                    {
+                        Config.Dispose();
+                    }
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        /// <summary>
+        /// IDispose::Dispose
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
