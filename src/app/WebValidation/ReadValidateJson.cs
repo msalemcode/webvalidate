@@ -134,9 +134,10 @@ namespace WebValidation
             // validate each request
             foreach (Request r in requests)
             {
-                if (!r.Validate(out string message))
+                ValidationResult result = Parameters.Validator.Validate(r);
+                if (result.Failed)
                 {
-                    Console.WriteLine($"Error: Invalid json\n\t{JsonConvert.SerializeObject(r, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })}\n\t{message}");
+                    Console.WriteLine($"Error: Invalid json\n\t{JsonConvert.SerializeObject(r, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })}\n\t{string.Join("\n", result.ValidationErrors)}");
                     return false;
                 }
             }

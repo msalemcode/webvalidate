@@ -22,8 +22,9 @@ RUN dotnet publish -c Release -o /app
 
 ### Run end-to-end tests
 WORKDIR /app
-RUN dotnet webvalidate.dll --host bluebell --files dotnet.json baseline.json && \
-    dotnet webvalidate.dll --host sherbert --files node.json   baseline.json
+RUN dotnet webvalidate.dll --host bluebell --files dotnet.json baseline.json benchmark.json && \
+    dotnet webvalidate.dll --host sherbert --files node.json   baseline.json benchmark.json && \
+    dotnet webvalidate.dll --host gelato   --files java.json   baseline.json
 
     
 ###########################################################

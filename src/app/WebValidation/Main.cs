@@ -55,7 +55,7 @@ namespace WebValidation
         /// <summary>
         /// Opens and configures the shared HttpClient
         /// 
-        /// Make sure to dispose via using or in IDispose
+        /// Disposed in IDispose
         /// </summary>
         /// <returns>HttpClient</returns>
         HttpClient OpenHttpClient(string host)
@@ -140,20 +140,17 @@ namespace WebValidation
         /// <param name="timerState">TimerState</param>
         private static void SummaryLogTask(object timerState)
         {
-            if (!(timerState is TimerRequestState state))
+            if (timerState is TimerRequestState state)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tError\tTimerState is null");
-                return;
+                // get count and reset to zero
+                long count = Interlocked.Exchange(ref state.Count, 0);
+
+                // log the count
+                Console.WriteLine($"{state.CurrentLogTime.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tTotal Requests\t{count}");
+
+                // set next log time
+                state.CurrentLogTime = state.CurrentLogTime.AddHours(1);
             }
-
-            // get count and reset to zero
-            long count = Interlocked.Exchange(ref state.Count, 0);
-
-            // log the count
-            Console.WriteLine($"{state.CurrentLogTime.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tTotal Requests\t{count}");
-
-            // set next log time
-            state.CurrentLogTime = state.CurrentLogTime.AddHours(1);
         }
 
         /// <summary>
@@ -350,6 +347,7 @@ namespace WebValidation
             }
 
             PerfLog perfLog;
+            ValidationResult valid;
 
             // send the request
             using (HttpRequestMessage req = new HttpRequestMessage(new HttpMethod(request.Verb), request.Path))
@@ -363,14 +361,14 @@ namespace WebValidation
                 double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
 
                 // validate the response
-                bool valid = ValidateAll(request, resp, body, out string res);
+                valid = Response.Validator.Validate(request, resp, body);
 
                 // check the performance
-                perfLog = CreatePerfLog(request, res, duration, body, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode, valid);
+                perfLog = CreatePerfLog(request, valid, duration, (long)resp.Content.Headers.ContentLength, (int)resp.StatusCode);
             }
 
             // log the test
-            LogToConsole(request, perfLog);
+            LogToConsole(request, valid, perfLog);
 
             // add the metrics
             if (_config.Metrics != null)
@@ -385,26 +383,30 @@ namespace WebValidation
         /// Create a PerfLog
         /// </summary>
         /// <param name="request">Request</param>
-        /// <param name="validationResults">validation errors</param>
+        /// <param name="validationResult">validation errors</param>
         /// <param name="duration">duration</param>
         /// <param name="body">content body</param>
         /// <param name="contentLength">content length</param>
         /// <param name="statusCode">status code</param>
         /// <returns></returns>
-        public PerfLog CreatePerfLog(Request request, string validationResults, double duration, string body, long contentLength, int statusCode, bool isValid)
+        public PerfLog CreatePerfLog(Request request, ValidationResult validationResult, double duration, long contentLength, int statusCode)
         {
+            if (validationResult == null)
+            {
+                throw new ArgumentNullException(nameof(validationResult));
+            }
+
             // map the parameters
             PerfLog log = new PerfLog
             {
                 StatusCode = statusCode,
                 Category = request?.PerfTarget?.Category ?? string.Empty,
-                Validated = string.IsNullOrEmpty(validationResults),
-                ValidationResults = validationResults,
-                Body = body,
+                Validated = validationResult.Validated,
+                ValidationResults = string.Join('\n', validationResult.ValidationErrors),
                 Duration = duration,
                 ContentLength = contentLength,
                 PerfLevel = 0,
-                IsValid = isValid
+                IsValid = !validationResult.Failed
             };
 
             // determine the Performance Level based on category
@@ -441,12 +443,23 @@ namespace WebValidation
         /// </summary>
         /// <param name="request">Request</param>
         /// <param name="perfLog">PerfLog</param>
-        void LogToConsole(Request request, PerfLog perfLog)
+        void LogToConsole(Request request, ValidationResult valid, PerfLog perfLog)
         {
-            // only log 4XX and 5XX status codes unless verbose is true or config is null
-            if (_config == null || (bool)_config.Verbose || perfLog.StatusCode > 399 || !string.IsNullOrEmpty(perfLog.ValidationResults))
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (valid == null) throw new ArgumentNullException(nameof(valid));
+            if (perfLog == null) throw new ArgumentNullException(nameof(perfLog));
+
+            // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
+            if ((bool)_config.Verbose || perfLog.StatusCode > 399 || !valid.Validated)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(13)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}{perfLog.ValidationResults.Replace("\n", string.Empty, StringComparison.OrdinalIgnoreCase)}", CultureInfo.InvariantCulture);
+                string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
+
+                if (!valid.Validated)
+                {
+                    log += "\t" + string.Join('\t', valid.ValidationErrors);
+                }
+
+                Console.WriteLine(log);
             }
         }
     }

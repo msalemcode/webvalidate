@@ -8,7 +8,6 @@ namespace WebValidation.Model
         public string Category { get; set; }
         public int PerfLevel { get; set; }
         public bool Validated { get; set; } = true;
-        public string Body { get; set; } = string.Empty;
         public string ValidationResults { get; set; } = string.Empty;
         public double Duration { get; set; }
         public int StatusCode { get; set; }

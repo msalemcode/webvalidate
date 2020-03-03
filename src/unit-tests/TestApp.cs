@@ -21,13 +21,13 @@ namespace UnitTests
         public void Version()
         {
             Assert.NotNull(WebValidationApp.Version.AssemblyVersion);
-            Assert.StartsWith("0.5." + DateTime.UtcNow.ToString("MMdd", System.Globalization.CultureInfo.InvariantCulture) + ".", WebValidationApp.Version.AssemblyVersion, StringComparison.InvariantCultureIgnoreCase);
+            Assert.StartsWith("0.5.", WebValidationApp.Version.AssemblyVersion, StringComparison.InvariantCultureIgnoreCase);
         }
 
         [Fact]
         public void RunOnce()
         {
-            string[] args = new string[] { "--host", "bluebell" };
+            string[] args = new string[] { "--host", "froyo" };
 
             Assert.Equal(0, App.Main(args));
         }
@@ -37,12 +37,12 @@ namespace UnitTests
         {
             using App app = new App();
 
-            string[] args = new string[] { "--host", "bluebell" };
+            string[] args = new string[] { "--host", "froyo" };
 
             Assert.True(app.ProcessCommandArgs(args));
             Assert.True(app.ValidateParameters());
 
-            Assert.Equal("https://bluebell.azurewebsites.net", app.Config.Host);
+            Assert.Equal("https://froyo.azurewebsites.net", app.Config.Host);
             Assert.NotNull(app.Config.FileList);
             Assert.Single(app.Config.FileList);
             Assert.Equal("TestFiles/baseline.json", app.Config.FileList[0]);
@@ -64,12 +64,12 @@ namespace UnitTests
         {
             using App app = new App();
 
-            string[] args = new string[] { "--host", "bluebell", "--files", "dotnet.json", "genres.json", "year.json" };
+            string[] args = new string[] { "--host", "froyo", "--files", "dotnet.json", "genres.json", "year.json" };
 
             Assert.True(app.ProcessCommandArgs(args));
             Assert.True(app.ValidateParameters());
 
-            Assert.Equal("https://bluebell.azurewebsites.net", app.Config.Host);
+            Assert.Equal("https://froyo.azurewebsites.net", app.Config.Host);
             Assert.NotNull(app.Config.FileList);
             Assert.Equal(3, app.Config.FileList.Count);
             Assert.Equal("TestFiles/dotnet.json", app.Config.FileList[0]);
@@ -93,7 +93,7 @@ namespace UnitTests
         {
             using App app = new App();
 
-            string[] args = new string[] { "--host", "bluebell", "--files", "badFileName.json" };
+            string[] args = new string[] { "--host", "froyo", "--files", "badFileName.json" };
 
             Assert.True(app.ProcessCommandArgs(args));
             Assert.False(app.ValidateParameters());
