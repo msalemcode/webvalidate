@@ -1,8 +1,4 @@
 [
-  {"Path":"/api/movies?toprated=true","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":10}}},
-  {"Path":"/api/movies?year=1999&toprated=true","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":10}}},
-  {"Path":"/api/movies?year=2001&toprated=true","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":10}}},
-  {"Path":"/api/movies?genre=action&toprated=true","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":10}}},
   {"Path":"/api/movies?rating=8.0","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":100}}},
   {"Path":"/api/movies?rating=8.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":20}}},
   {"Path":"/api/movies?rating=8.8","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":6}}},

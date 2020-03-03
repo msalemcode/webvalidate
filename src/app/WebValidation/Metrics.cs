@@ -64,9 +64,6 @@ namespace WebValidation
             {
                 try
                 {
-                    // track duration by app name as well
-                    string appDurationLabel = durationLabel + "-" + TelemetryAppName;
-
                     // track the custom event
                     TelemetryClient.TrackEvent(categoryLabel,
                         new Dictionary<string, string> {
@@ -77,7 +74,6 @@ namespace WebValidation
                         },
                         new Dictionary<string, double> {
                             { durationLabel, duration },
-                            { appDurationLabel, duration },
                             { statusLabel, status },
                             { quartileLabel, perfLevel },
                             { validatedLabel, validated ? 1 : 0 },

@@ -10,7 +10,6 @@
   {"Path":"/api/movies?q=ring","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonArray":{"Count":7}}},
   {"Path":"/api/movies?actorid=nm0000206","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonArray":{"Count":45}}},
   {"Path":"/api/movies?genre=action","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonArray":{"Count":100}}},
-  {"Path":"/api/movies?toprated=true","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonArray":{"Count":10}}},
   {"Path":"/api/movies?year=1999","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonArray":{"Count":39}}},
   {"Path":"/api/featured/movie","PerfTarget":{"Category":"SearchMovies"},"Validation":{"JsonObject":[{"Field":"type","Value":"Movie"},{"Field":"id","Value":null},{"Field":"movieId","Value":null},{"Field":"title","Value":null},{"Field":"year","Value":null}]}},
   {"Path":"/healthz/ietf","PerfTarget":{"Category":"healthz"},"Validation":{"ContentType":"application/health+json","JsonObject":[{"Field":"status","Value":"pass"}]}},
