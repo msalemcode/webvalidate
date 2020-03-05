@@ -270,5 +270,33 @@ namespace WebValidation.Parameters
 
             return res;
         }
+
+
+        ///<summary>
+        /// validate JsonObject
+        ///</summary>
+        /// <param name="message">out string error message</param>
+        /// <returns></returns>
+        private static ValidationResult ValidateJsonObject(List<JsonProperty> jsonobject)
+        {
+            ValidationResult res = new ValidationResult();
+
+            // null check
+            if (jsonobject == null)
+            {
+                return res;
+            }
+
+            // validate field
+            foreach (var f in jsonobject)
+            {
+                if (string.IsNullOrWhiteSpace(f.Field))
+                {
+                    res.ValidationErrors.Add("field: field cannot be empty");
+                }
+            }
+
+            return res;
+        }
     }
 }

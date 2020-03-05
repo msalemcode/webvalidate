@@ -36,7 +36,7 @@ jobs:
         echo "${{ secrets.DOCKER_PAT }}" | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
 
     - name: Build Container
-      run: docker build . --file Dockerfile --tag image
+      run: docker build . --file Dockerfile-e2e --tag image
 
     - name: Docker Push
       run: |
@@ -49,9 +49,6 @@ jobs:
 
         # Strip git ref prefix from version
         VERSION=$(echo "${{ github.head_ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-        #docker tag image $IMAGE_ID:dev-$VERSION
-        #docker push $IMAGE_ID:dev-$VERSION
 
         docker tag image $IMAGE_ID:beta
         docker push $IMAGE_ID:beta
@@ -81,7 +78,7 @@ jobs:
           az login --service-principal -u ${{ secrets.SERVICE_PRINCIPAL }} -p ${{ secrets.SERVICE_PRINCIPAL_SECRET }} --tenant ${{ secrets.TENANT }}
 
           # Push to ACR for Build and Push
-          az acr build -r ${ACR_REG} -f Dockerfile -t ${ACR_REPO}/${ACR_IMAGE}:dev-${VERSION} https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
+          az acr build -r ${ACR_REG} -f Dockerfile-e2e -t ${ACR_REPO}/${ACR_IMAGE}:dev-${VERSION} https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
 
 
   

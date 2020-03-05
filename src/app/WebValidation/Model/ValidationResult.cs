@@ -6,7 +6,7 @@ namespace WebValidation.Model
     {
         public bool Failed { get; set; } = false;
 
-        public bool Validated { get { return ValidationErrors.Count == 0; } }
+        public bool Validated => ValidationErrors.Count == 0;
 
         public List<string> ValidationErrors { get; } = new List<string>();
 

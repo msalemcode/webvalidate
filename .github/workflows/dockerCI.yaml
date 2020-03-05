@@ -40,7 +40,7 @@ jobs:
         echo "${{ secrets.DOCKER_PAT }}" | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
 
     - name: Build Container
-      run: docker build . --file Dockerfile --tag image
+      run: docker build . --file Dockerfile-e2e --tag image
 
     - name: Docker Push
       run: |
@@ -100,9 +100,9 @@ jobs:
           # Strip "v" prefix from tag name
             VERSION=$(echo $VERSION | sed -e 's/^v//')
 
-            az acr build -r ${ACR_REG} -f Dockerfile -t ${ACR_REPO}/${ACR_IMAGE}:${VERSION} -t ${ACR_REPO}/${ACR_IMAGE}:${ACR_TAG} -t ${ACR_REPO}/${ACR_IMAGE}:beta https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
+            az acr build -r ${ACR_REG} -f Dockerfile-e2e -t ${ACR_REPO}/${ACR_IMAGE}:${VERSION} -t ${ACR_REPO}/${ACR_IMAGE}:${ACR_TAG} -t ${ACR_REPO}/${ACR_IMAGE}:beta https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
           else
-            az acr build -r ${ACR_REG} -f Dockerfile -t ${ACR_REPO}/${ACR_IMAGE}:beta https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
+            az acr build -r ${ACR_REG} -f Dockerfile-e2e -t ${ACR_REPO}/${ACR_IMAGE}:beta https://github.com/${GITHUB_REPOSITORY}.git#${{ github.ref }}
           fi
 
   

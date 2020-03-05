@@ -445,9 +445,20 @@ namespace WebValidation
         /// <param name="perfLog">PerfLog</param>
         void LogToConsole(Request request, ValidationResult valid, PerfLog perfLog)
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
-            if (valid == null) throw new ArgumentNullException(nameof(valid));
-            if (perfLog == null) throw new ArgumentNullException(nameof(perfLog));
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (valid == null)
+            {
+                throw new ArgumentNullException(nameof(valid));
+            }
+
+            if (perfLog == null)
+            {
+                throw new ArgumentNullException(nameof(perfLog));
+            }
 
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
             if ((bool)_config.Verbose || perfLog.StatusCode > 399 || !valid.Validated)

@@ -12,6 +12,9 @@ namespace WebValidationApp
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
         public Config Config { get; } = new Config();
 
+        // set to true in ctl-c handler
+        private static bool isCancelled = false;
+
         /// <summary>
         /// Main entry point
         /// </summary>
@@ -57,14 +60,20 @@ namespace WebValidationApp
             if (Config.RunLoop)
             {
                 webv.RunLoop(Config, TokenSource.Token);
+
+                // RunLoop should only end on a signal
+                if (!isCancelled)
+                {
+                    Console.WriteLine("RunLoop ended without signal");
+                }
+
+                return isCancelled ? 0 : -1;
             }
             else
             {
                 // run one iteration
                 return webv.RunOnce(Config).Result ? 0 : -1;
             }
-
-            return 0;
         }
 
         /// <summary>
@@ -74,6 +83,7 @@ namespace WebValidationApp
         {
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
             {
+                isCancelled = true;
                 e.Cancel = true;
                 TokenSource.Cancel();
 
