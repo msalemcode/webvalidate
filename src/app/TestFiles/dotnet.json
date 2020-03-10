@@ -1,7 +1,7 @@
 [
   {"Path":"/healthz/dotnet","PerfTarget":{"Category": "healthz"},"Validation":{"JsonObject":[{"Field":"status","Value":"Healthy"}]}},
   {"Path":"/index.html","PerfTarget":{"Category": "static"},"SortOrder":1,"Validation":{"ContentType":"text/html"}},
-  {"Path":"/swagger/helium/swagger.json","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"openapi","Value":null},{"Field":"info","Value":null},{"Field":"paths","Value":null},{"Field":"components","Value":null}]}},
+  {"Path":"/swagger.json","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"openapi","Value":null},{"Field":"info","Value":null},{"Field":"paths","Value":null},{"Field":"components","Value":null}]}},
   {"Path": "/robots.txt","PerfTarget":{"Category": "static"},"Validation":{"ContentType": "text/plain","Length": 48,"Contains": ["User-agent: *","Disallow: /"]}},
   {"Path": "/robots1234.txt","PerfTarget":{"Category": "static"},"Validation": {"ContentType": "text/plain","Length": 48,"Contains": ["User-agent: *","Disallow: /"]}},
 ]

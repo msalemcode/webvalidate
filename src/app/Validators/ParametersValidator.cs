@@ -9,33 +9,25 @@ namespace WebValidation.Parameters
     public static class Validator
     {
         /// <summary>
-        /// validate the request rules
+        /// validate Request
         /// </summary>
         /// <param name="r">Request</param>
-        /// <param name="message">out string error message</param>
-        /// <returns></returns>
+        /// <returns>ValidationResult</returns>
         public static ValidationResult Validate(Request r)
         {
             ValidationResult result = new ValidationResult();
 
             if (r == null)
             {
-                result.Failed = true;
                 result.ValidationErrors.Add("request is null");
                 return result;
             }
 
             // validate the request path
-            if (!result.Add(ValidatePath(r.Path)))
-            {
-                return result;
-            }
+            result.Add(ValidatePath(r.Path));
 
             // validate the verb
-            if (!result.Add(ValidateVerb(r.Verb)))
-            {
-                return result;
-            }
+            result.Add(ValidateVerb(r.Verb));
 
             // validate the rules
             result.Add(Validate(r.Validation));
@@ -43,6 +35,11 @@ namespace WebValidation.Parameters
             return result;
         }
 
+        /// <summary>
+        /// validate Validation
+        /// </summary>
+        /// <param name="v">Validation</param>
+        /// <returns>ValidationResult</returns>
         public static ValidationResult Validate(Validation v)
         {
             ValidationResult res = new ValidationResult();
@@ -65,7 +62,7 @@ namespace WebValidation.Parameters
                 res.ValidationErrors.Add("contentType: ContentType cannot be empty");
             }
 
-            // validate ContentType
+            // validate ExactMatch
             if (v.ExactMatch != null && v.ExactMatch.Length == 0)
             {
                 res.ValidationErrors.Add("exactMatch: exactMatch cannot be empty string");
@@ -86,6 +83,9 @@ namespace WebValidation.Parameters
             // validate perfTarget
             res.Add(Validate(v.PerfTarget));
 
+            // validate json object
+            res.Add(Validate(v.JsonObject));
+
             // validate json array parameters
             res.Add(Validate(v.JsonArray));
 
@@ -95,41 +95,40 @@ namespace WebValidation.Parameters
         ///<summary>
         /// validate PerfTarget
         ///</summary>
-        /// <param name="message">error message</param>
-        /// <returns>bool success (out message)</returns>
-        public static ValidationResult Validate(PerfTarget p)
+        ///<param name="target">PerfTarget</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult Validate(PerfTarget target)
         {
             ValidationResult res = new ValidationResult();
 
             // null check
-            if (p == null)
+            if (target == null)
             {
                 return res;
             }
 
             // validate Category
-            if (string.IsNullOrWhiteSpace(p.Category))
+            if (string.IsNullOrWhiteSpace(target.Category))
             {
                 res.ValidationErrors.Add("category: category cannot be empty");
             }
 
             //validate Targets
-            if (p.Quartiles == null || p.Quartiles.Count != 3)
+            if (target.Quartiles == null || target.Quartiles.Count != 3)
             {
                 res.ValidationErrors.Add("quartiles: quartiles must have 3 values");
             }
 
-            p.Category = p.Category.Trim();
+            target.Category = target?.Category?.Trim();
 
             return res;
         }
 
         /// <summary>
-        /// validate the json array rules
+        /// validate JsonArray
         /// </summary>
-        /// <param name="rule">JsonArray</param>
-        /// <param name="message">error message</param>
-        /// <returns>bool success (out message)</returns>
+        /// <param name="a">JsonArray</param>
+        /// <returns>ValidationResult</returns>
         public static ValidationResult Validate(JsonArray a)
         {
             ValidationResult res = new ValidationResult();
@@ -140,10 +139,113 @@ namespace WebValidation.Parameters
                 return res;
             }
 
-            // must be >= 0
-            if (a.Count < 0 || a.MinCount < 0 || a.MaxCount < 0)
+            // must be null or >= 0
+            if ((a.Count != null && a.Count < 0) ||
+                (a.MinCount != null && a.MinCount < 0) ||
+                (a.MaxCount != null && a.MaxCount < 0))
             {
                 res.ValidationErrors.Add("jsonArray: count parameters must be >= 0");
+            }
+
+            // can't combine Count with MinCount or MaxCount
+            if (a.Count != null && (a.MinCount != null || a.MaxCount != null))
+            {
+                res.ValidationErrors.Add("jsonArray: cannot combine Count with MinCount or MaxCount");
+            }
+
+            // MaxCount must be > MinCount
+            if (a.MinCount != null && a.MaxCount != null && a.MinCount >= a.MaxCount)
+            {
+                res.ValidationErrors.Add("jsonArray: MaxCount must be > MinCount");
+            }
+
+            // validate ForEach
+            res.Add(Validate(a.ForEach));
+
+            // validate ByIndex
+            res.Add(Validate(a.ByIndex));
+
+            return res;
+        }
+
+        ///<summary>
+        /// validate JsonObject
+        ///</summary>
+        ///<param name="jsonobject">list of JsonProperty</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult Validate(List<JsonProperty> jsonobject)
+        {
+            ValidationResult res = new ValidationResult();
+
+            // null check
+            if (jsonobject == null)
+            {
+                return res;
+            }
+
+            // validate field
+            foreach (var f in jsonobject)
+            {
+                if (string.IsNullOrWhiteSpace(f.Field))
+                {
+                    res.ValidationErrors.Add("field: field cannot be empty");
+                }
+
+                res.Add(Validate(f.Validation));
+            }
+
+            return res;
+        }
+
+        ///<summary>
+        /// validate JsonArray.ByIndex
+        ///</summary>
+        ///<param name="byIndexList">list of JsonPropertyByIndex</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult Validate(List<JsonPropertyByIndex> byIndexList)
+        {
+            ValidationResult res = new ValidationResult();
+
+            // null check
+            if (byIndexList == null || byIndexList.Count == 0)
+            {
+                return res;
+            }
+
+            // validate parameters 
+            foreach (var f in byIndexList)
+            {
+                // validate index
+                if ((f.Index) < 0)
+                {
+                    res.ValidationErrors.Add("index: index cannot be less than 0");
+                }
+
+                // validate recursively
+                res.Add(Validate(f.Validation));
+            }
+
+            return res;
+        }
+
+        /// <summary>
+        /// Validate JsonArray.ForEach
+        /// </summary>
+        /// <param name="list">list of Validation objects</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult Validate(List<Validation> list)
+        {
+            ValidationResult res = new ValidationResult();
+
+            if (list == null || list.Count == 0)
+            {
+                return res;
+            }
+
+            // validate recursively
+            foreach (Validation v in list)
+            {
+                res.Add(Validate(v));
             }
 
             return res;
@@ -152,9 +254,9 @@ namespace WebValidation.Parameters
         ///<summary>
         /// validate Length, MinLength and MaxLength
         ///</summary>
-        /// <param name="message">error message</param>
-        /// <returns>bool success (out message)</returns>
-        private static ValidationResult ValidateLength(Validation v)
+        ///<param name="v">Validation</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult ValidateLength(Validation v)
         {
             ValidationResult res = new ValidationResult();
 
@@ -194,12 +296,11 @@ namespace WebValidation.Parameters
         }
 
         /// <summary>
-        /// validate the request HTTP verb
+        /// validate Verb
         /// </summary>
         /// <param name="verb">string</param>
-        /// <param name="message">out string error message</param>
-        /// <returns></returns>
-        private static ValidationResult ValidateVerb(string verb)
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult ValidateVerb(string verb)
         {
             ValidationResult res = new ValidationResult();
 
@@ -211,7 +312,6 @@ namespace WebValidation.Parameters
             // verb must be in this list
             if (!(new List<string> { "GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "OPTIONS", "CONNECT", "PATCH" }).Contains(verb))
             {
-                res.Failed = true;
                 res.ValidationErrors.Add("verb: invalid verb: " + verb);
             }
 
@@ -221,9 +321,9 @@ namespace WebValidation.Parameters
         /// <summary>
         /// validate Contains
         /// </summary>
-        /// <param name="message">out string error message</param>
-        /// <returns></returns>
-        private static ValidationResult ValidateContains(List<string> contains)
+        /// <param name="contains">list of string</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult ValidateContains(List<string> contains)
         {
             ValidationResult res = new ValidationResult();
 
@@ -246,54 +346,23 @@ namespace WebValidation.Parameters
         }
 
         /// <summary>
-        /// validate request path
+        /// validate Path
         /// </summary>
         /// <param name="path">string</param>
-        /// <param name="message">out string error message</param>
-        /// <returns></returns>
-        private static ValidationResult ValidatePath(string path)
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult ValidatePath(string path)
         {
             ValidationResult res = new ValidationResult();
 
             // path is required
             if (string.IsNullOrWhiteSpace(path))
             {
-                res.Failed = true;
                 res.ValidationErrors.Add("path: path is required");
             }
             // path must begin with /
             else if (!path.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                res.Failed = true;
                 res.ValidationErrors.Add("path: path must begin with /");
-            }
-
-            return res;
-        }
-
-
-        ///<summary>
-        /// validate JsonObject
-        ///</summary>
-        /// <param name="message">out string error message</param>
-        /// <returns></returns>
-        private static ValidationResult ValidateJsonObject(List<JsonProperty> jsonobject)
-        {
-            ValidationResult res = new ValidationResult();
-
-            // null check
-            if (jsonobject == null)
-            {
-                return res;
-            }
-
-            // validate field
-            foreach (var f in jsonobject)
-            {
-                if (string.IsNullOrWhiteSpace(f.Field))
-                {
-                    res.ValidationErrors.Add("field: field cannot be empty");
-                }
             }
 
             return res;

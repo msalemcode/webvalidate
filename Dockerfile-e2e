@@ -12,19 +12,13 @@ FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build
 # Copy the source
 COPY src /src
 
-### Run the unit tests
-WORKDIR /src/unit-tests
+### Run the end-to-end tests
+WORKDIR /src/e2e-tests
 RUN dotnet test --logger:trx
 
 ### Build the release app
 WORKDIR /src/app
 RUN dotnet publish -c Release -o /app
-
-### Run end-to-end tests
-WORKDIR /app
-RUN dotnet webvalidate.dll --host bluebell --files dotnet.json baseline.json benchmark.json bad.json && \
-    dotnet webvalidate.dll --host sherbert --files node.json   baseline.json benchmark.json
-##    dotnet webvalidate.dll --host gelato   --files java.json   baseline.json
 
     
 ###########################################################

@@ -20,11 +20,6 @@ RUN dotnet test --logger:trx
 WORKDIR /src/app
 RUN dotnet publish -c Release -o /app
 
-### Run end-to-end tests
-WORKDIR /app
-RUN dotnet webvalidate.dll --host bluebell --files dotnet.json baseline.json && \
-    dotnet webvalidate.dll --host sherbert --files node.json   baseline.json
-
     
 ###########################################################
 

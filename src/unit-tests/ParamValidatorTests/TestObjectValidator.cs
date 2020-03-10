@@ -1,0 +1,37 @@
+using System.Collections.Generic;
+using WebValidation.Model;
+using WebValidation.Parameters;
+using Xunit;
+
+namespace UnitTests
+{
+    public class TestJsonObjectValidator
+    {
+        [Fact]
+        public void JsonObjectTest()
+        {
+            List<JsonProperty> properties = null;
+
+            // validate json object is null
+            Assert.True(Validator.Validate(properties).Validated);
+
+            // Field can't be empty
+            properties = new List<JsonProperty> { new JsonProperty { Field = string.Empty } };
+            Assert.True(Validator.Validate(properties).Failed);
+
+            // valid
+            properties.Clear();
+            properties.Add(new JsonProperty { Field = "type" });
+            Assert.False(Validator.Validate(properties).Failed);
+
+            // validate empty list
+            properties = new List<JsonProperty>();
+            Assert.Empty(properties);
+            Assert.True(Validator.Validate(properties).Validated);
+
+            // validate adding a property
+            properties.Add(new JsonProperty());
+            Assert.True(Validator.Validate(properties).Failed);
+        }
+    }
+}

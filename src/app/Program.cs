@@ -19,7 +19,7 @@ namespace WebValidationApp
         /// Main entry point
         /// </summary>
         /// <param name="args">Command Line Parms</param>
-        public static int Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             // should never be null
             if (args == null)
@@ -27,22 +27,15 @@ namespace WebValidationApp
                 args = Array.Empty<string>();
             }
 
-            // display help
-            if (CheckCommandLineHelp(args))
-            {
-                Usage();
-                return 0;
-            }
-
             // add ctl-c handler
             AddControlCHandler();
 
             // run the app
             using App app = new App();
-            return app.Run(args);
+            return await app.Run(args).ConfigureAwait(false);
         }
 
-        public int Run(string[] args)
+        public async Task<int> Run(string[] args)
         {
             // validate parameters
             if (!ProcessEnvironmentVariables() ||
@@ -50,7 +43,9 @@ namespace WebValidationApp
                 !ValidateParameters())
             {
                 Usage();
-                return -1;
+
+                // return -1 on error
+                return CheckCommandLineHelp(args) ? 0 : - 1;
             }
 
             // create the test
@@ -59,20 +54,19 @@ namespace WebValidationApp
             // run in a loop
             if (Config.RunLoop)
             {
-                webv.RunLoop(Config, TokenSource.Token);
-
                 // RunLoop should only end on a signal
-                if (!isCancelled)
+                if (!webv.RunLoop(Config, TokenSource.Token))
                 {
-                    Console.WriteLine("RunLoop ended without signal");
+                    Console.WriteLine("RunLoop ended on error");
+                    return isCancelled ? 0 : -1;
                 }
 
-                return isCancelled ? 0 : -1;
+                return 0;
             }
             else
             {
                 // run one iteration
-                return webv.RunOnce(Config).Result ? 0 : -1;
+                return await webv.RunOnce(Config).ConfigureAwait(false) ? 0 : -1;
             }
         }
 
@@ -211,7 +205,6 @@ namespace WebValidationApp
             return true;
         }
 
-
         /// <summary>
         /// Validate RunOnce parameters
         /// </summary>
@@ -242,24 +235,6 @@ namespace WebValidationApp
                 if (Config.SleepMs == -1)
                 {
                     Config.SleepMs = 0;
-                }
-            }
-
-            // validate request timeout
-            if (Config.RequestTimeout < 1)
-            {
-                Console.WriteLine(Constants.RequestTimeoutParameterError, Config.RequestTimeout);
-                return false;
-            }
-
-            // validate telemetry
-            if (!string.IsNullOrEmpty(Config.TelemetryKey) || !string.IsNullOrEmpty(Config.TelemetryApp))
-            {
-                // both or neither have to be specified
-                if (string.IsNullOrEmpty(Config.TelemetryKey) || string.IsNullOrEmpty(Config.TelemetryApp))
-                {
-                    Console.WriteLine(Constants.TelemetryParameterError, Config.TelemetryApp, Config.TelemetryKey);
-                    return false;
                 }
             }
 

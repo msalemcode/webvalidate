@@ -18,22 +18,17 @@ namespace WebValidation.Response
 
             if (r == null || r.Validation == null || body == null)
             {
-                result.Failed = false;
                 return result;
             }
 
             if (response == null)
             {
-                result.Failed = true;
                 result.ValidationErrors.Add("validate: null http response message");
                 return result;
             }
 
             // validate status code - fail on error
-            if (result.Add(ValidateStatusCode((int)response.StatusCode, r.Validation.StatusCode)))
-            {
-                return result;
-            }
+            result.Add(ValidateStatusCode((int)response.StatusCode, r.Validation.StatusCode));
 
             // not found doesn't have body or headers
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -42,10 +37,7 @@ namespace WebValidation.Response
             }
 
             // validate ContentType - fail on error
-            if (result.Add(ValidateContentType(response.Content.Headers.ContentType.ToString(), r.Validation.ContentType)))
-            {
-                return result;
-            }
+            result.Add(ValidateContentType(response.Content.Headers.ContentType.ToString(), r.Validation.ContentType));
 
             // run validation rules
             result.Add(ValidateLength((long)response.Content.Headers.ContentLength, r.Validation));
@@ -61,9 +53,9 @@ namespace WebValidation.Response
 
             if (v != null)
             {
-                ValidateContains(v.Contains, body);
-                ValidateExactMatch(v.ExactMatch, body);
-                Validate(v.JsonObject, body);
+                result.Add(ValidateContains(v.Contains, body));
+                result.Add(ValidateExactMatch(v.ExactMatch, body));
+                result.Add(Validate(v.JsonObject, body));
 
                 result.Add(Validate(v.JsonArray, body));
             }
@@ -139,20 +131,16 @@ namespace WebValidation.Response
 
                 result.Add(ValidateJsonArrayLength(jArray, resList));
                 result.Add(ValidateForEach(jArray.ForEach, resList));
-
-                ValidateByIndex(jArray.ByIndex, resList);
-
+                result.Add(ValidateByIndex(jArray.ByIndex, resList));
             }
             catch (SerializationException se)
             {
                 result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
-                result.Failed = true;
             }
 
             catch (Exception ex)
             {
                 result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {ex.Message}"));
-                result.Failed = true;
             }
 
             return result;
@@ -172,10 +160,7 @@ namespace WebValidation.Response
                     foreach (Validation fe in validationList)
                     {
                         // call validate recursively
-                        if (Validate(fe, JsonConvert.SerializeObject(doc)))
-                        {
-                            //TODo res += msg;
-                        }
+                        result.Add(Validate(fe, JsonConvert.SerializeObject(doc)));
                     }
                 }
             }
@@ -274,7 +259,6 @@ namespace WebValidation.Response
             {
                 if (actual != null && !actual.StartsWith(expected, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Failed = true;
                     result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContentType: {actual} Expected: {expected}"));
                 }
             }

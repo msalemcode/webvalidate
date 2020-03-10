@@ -48,7 +48,7 @@ namespace WebValidation
 
             if (_requestList == null || _requestList.Count == 0)
             {
-                Environment.Exit(-1);
+                throw new ArgumentException("RequestList is empty");
             }
         }
 
@@ -78,11 +78,11 @@ namespace WebValidation
                 throw new ArgumentNullException(nameof(config));
             }
 
-            bool isError = false;
             int duration;
             DateTime dt;
             PerfLog pl;
             int errorCount = 0;
+            int validationFailureCount = 0;
 
             // send each request
             foreach (Request r in _requestList)
@@ -95,12 +95,10 @@ namespace WebValidation
 
                     if (!pl.IsValid)
                     {
-                        isError = true;
-
-                        errorCount++;
+                        validationFailureCount++;
 
                         // stop after MaxErrors errors
-                        if (errorCount >= config.MaxErrors)
+                        if ((errorCount + validationFailureCount) > config.MaxErrors)
                         {
                             break;
                         }
@@ -121,7 +119,7 @@ namespace WebValidation
                 {
                     // ignore any error and keep processing
                     Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tException: {ex.Message}");
-                    isError = true;
+                    errorCount++;
                 }
             }
 
@@ -131,7 +129,13 @@ namespace WebValidation
                 Console.WriteLine($"Errors: {errorCount}");
             }
 
-            return !isError;
+            // display validation failure count
+            if (validationFailureCount > 0)
+            {
+                Console.WriteLine($"Validation Errors: {validationFailureCount}");
+            }
+
+            return errorCount == 0;
         }
 
         /// <summary>
@@ -226,7 +230,7 @@ namespace WebValidation
         /// </summary>
         private static void DisplayStartupMessage(Config config)
         {
-            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test Loop on {config.Host}\n\t\t");
+            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {WebValidationApp.Version.AssemblyVersion}\n\t\tHost: {config.Host}\n\t\t");
 
             msg += "Files: ";
             if (config.FileList.Count > 1)
@@ -242,14 +246,14 @@ namespace WebValidation
                 msg += config.FileList[0].Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase);
             }
 
-            msg += "; Sleep:" + config.SleepMs.ToString(CultureInfo.InvariantCulture);
-            msg += "; MaxConcurrent: " + config.MaxConcurrentRequests.ToString(CultureInfo.InvariantCulture);
+            msg += "\n\t\tSleep:" + config.SleepMs.ToString(CultureInfo.InvariantCulture);
+            msg += "\n\t\tMaxConcurrent: " + config.MaxConcurrentRequests.ToString(CultureInfo.InvariantCulture);
             if (config.Duration > 0)
             {
-                msg += "; " + config.Duration.ToString(CultureInfo.InvariantCulture);
+                msg += "\n\t\tDuration: " + config.Duration.ToString(CultureInfo.InvariantCulture);
             }
-            msg += config.Random ? "; Random" : string.Empty;
-            msg += (bool)config.Verbose ? "; Verbose" : string.Empty;
+            msg += config.Random ? "\n\t\tRandom" : string.Empty;
+            msg += config.Verbose != null && (bool)config.Verbose ? "\n\t\tVerbose" : string.Empty;
 
             msg += string.IsNullOrEmpty(config.TelemetryApp) ? string.Empty : string.Format(CultureInfo.InvariantCulture, $"\n\t\tTelemetry: {config.TelemetryApp} {config.TelemetryKey}");
 
@@ -263,7 +267,7 @@ namespace WebValidation
         /// <param name="config">Config</param>
         /// <param name="token">CancellationToken</param>
         /// <returns></returns>
-        public void RunLoop(Config config, CancellationToken token)
+        public bool RunLoop(Config config, CancellationToken token)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
 
@@ -314,12 +318,17 @@ namespace WebValidation
             else
             {
                 // wait one hour to keep total milliseconds from overflowing
-                while (dtMax.Subtract(DateTime.UtcNow).TotalHours > 0)
+                while (dtMax.Subtract(DateTime.UtcNow).TotalHours > 1)
                 {
                     Task.Delay(60 * 60 * 1000).Wait(token);
                 }
 
-                Task.Delay((int)dtMax.Subtract(DateTime.UtcNow).TotalMilliseconds).Wait(token);
+                int delay = (int)dtMax.Subtract(DateTime.UtcNow).TotalMilliseconds;
+
+                if (delay > 0)
+                {
+                    Task.Delay(delay).Wait(token);
+                }
             }
 
             // end and dispose of the timer
@@ -332,6 +341,9 @@ namespace WebValidation
             {
                 logTimer.Dispose();
             }
+
+            // graceful exit
+            return true;
         }
 
         /// <summary>
@@ -461,7 +473,7 @@ namespace WebValidation
             }
 
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
-            if ((bool)_config.Verbose || perfLog.StatusCode > 399 || !valid.Validated)
+            if ((_config.Verbose != null && (bool)_config.Verbose) || perfLog.StatusCode > 399 || !valid.Validated)
             {
                 string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
 
