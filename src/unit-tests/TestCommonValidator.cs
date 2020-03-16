@@ -101,5 +101,30 @@ namespace UnitTests
             Assert.False(res.Failed);
 
         }
+
+        [Fact]
+        public void ResponseNullTest()
+        {
+            Request r = new Request();
+
+            Assert.False(WebValidation.Response.Validator.Validate(r, null, string.Empty).Failed);
+
+            r.Validation = new Validation();
+
+            Assert.True(WebValidation.Response.Validator.Validate(r, null, "this is a test").Failed);
+
+            using System.Net.Http.HttpResponseMessage resp = new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+            Assert.True(WebValidation.Response.Validator.Validate(r, resp, "this is a test").Failed);
+
+            Assert.True(WebValidation.Response.Validator.ValidateStatusCode(400, 200).Failed);
+        }
+
+        [Fact]
+        public void WebVValidationTest()
+        {
+            using WebValidation.WebVMetrics m = new WebValidation.WebVMetrics("testapp", "testkey");
+            Assert.NotNull(m);
+            m.Dispose();
+        }
     }
 }

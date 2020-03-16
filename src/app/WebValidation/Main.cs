@@ -75,7 +75,8 @@ namespace WebValidation
         {
             if (config == null)
             {
-                throw new ArgumentNullException(nameof(config));
+                Console.WriteLine("RunOnce:Config is null");
+                return false;
             }
 
             int duration;

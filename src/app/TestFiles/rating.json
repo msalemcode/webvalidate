@@ -1,7 +1,7 @@
 [
-  {"Path":"/api/movies?rating=8.0","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":100}}},
-  {"Path":"/api/movies?rating=8.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":20}}},
-  {"Path":"/api/movies?rating=8.8","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":6}}},
-  {"Path":"/api/movies?rating=8.9","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":3}}},
-  {"Path":"/api/movies?rating=9.5","PerfTarget":{"Category": "SearchMovies"},"Validation":{"JsonArray":{"Count":0}}},
+  {"path":"/api/movies?rating=8","perfTarget":{"category":"SearchMovies"},"validation":{"jsonArray":{"count":100,"forEach":[{"jsonObject":[{"field":"id"},{"field":"movieId"},{"field":"title"},{"field":"year"},{"field":"partitionKey"},{"field":"runtime"},{"field":"rating"},{"field":"totalScore"},{"field":"textSearch"},{"field":"votes"},{"field":"genres"},{"field":"roles"}]}]}}},
+  {"path":"/api/movies?rating=8.5","perfTarget":{"category":"SearchMovies"},"validation":{"jsonArray":{"count":20,"forEach":[{"jsonObject":[{"field":"id"},{"field":"movieId"},{"field":"title"},{"field":"year"},{"field":"partitionKey"},{"field":"runtime"},{"field":"rating"},{"field":"totalScore"},{"field":"textSearch"},{"field":"votes"},{"field":"genres"},{"field":"roles"}]}]}}},
+  {"path":"/api/movies?rating=8.8","perfTarget":{"category":"SearchMovies"},"validation":{"jsonArray":{"count":6,"forEach":[{"jsonObject":[{"field":"id"},{"field":"movieId"},{"field":"title"},{"field":"year"},{"field":"partitionKey"},{"field":"runtime"},{"field":"rating"},{"field":"totalScore"},{"field":"textSearch"},{"field":"votes"},{"field":"genres"},{"field":"roles"}]}]}}},
+  {"path":"/api/movies?rating=8.9","perfTarget":{"category":"SearchMovies"},"validation":{"jsonArray":{"count":3,"forEach":[{"jsonObject":[{"field":"id"},{"field":"movieId"},{"field":"title"},{"field":"year"},{"field":"partitionKey"},{"field":"runtime"},{"field":"rating"},{"field":"totalScore"},{"field":"textSearch"},{"field":"votes"},{"field":"genres"},{"field":"roles"}]}]}}},
+  {"path":"/api/movies?rating=9.5","perfTarget":{"category":"SearchMovies"},"validation":{"jsonArray":{"count":0,"forEach":[{"jsonObject":[{"field":"id"},{"field":"movieId"},{"field":"title"},{"field":"year"},{"field":"partitionKey"},{"field":"runtime"},{"field":"rating"},{"field":"totalScore"},{"field":"textSearch"},{"field":"votes"},{"field":"genres"},{"field":"roles"}]}]}}},
 ]

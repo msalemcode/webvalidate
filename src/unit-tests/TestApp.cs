@@ -44,10 +44,11 @@ namespace UnitTests
             // test bad param with good param
             args = new string[] { "--host", "froyo", "foo" };
             Assert.False(app.ProcessCommandArgs(args));
+            app.Dispose();
         }
 
         [Fact]
-        public void ValidateAllJsonFilesTest()
+        public async Task ValidateAllJsonFilesTest()
         {
             // test all files
             using Config cfg = new Config
@@ -77,6 +78,11 @@ namespace UnitTests
 
             // file not found test
             Assert.Null(wv.ReadJson("foo"));
+
+            // test with null config
+            Assert.False(await wv.RunOnce(null).ConfigureAwait(false));
+
+            cfg.Dispose();
         }
 
         [Fact]
@@ -159,6 +165,8 @@ namespace UnitTests
 
             // isnullempty fails
             Assert.False(App.TestFileExists("testFileNotFound", out discard));
+
+            app.Dispose();
         }
 
         [Fact]
@@ -213,6 +221,8 @@ namespace UnitTests
 
             // file not found
             Assert.False(app.ValidateParameters());
+
+            app.Dispose();
         }
 
         [Fact]
@@ -242,6 +252,8 @@ namespace UnitTests
             Assert.Null(app.Config.TelemetryApp);
             Assert.Null(app.Config.TelemetryKey);
             Assert.True(app.Config.Verbose);
+
+            app.Dispose();
         }
     }
 }

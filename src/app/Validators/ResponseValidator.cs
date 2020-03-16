@@ -36,6 +36,12 @@ namespace WebValidation.Response
                 return result;
             }
 
+            // redirects doesn't have body or headers
+            if ((int)response.StatusCode >= 300 && (int)response.StatusCode <= 399)
+            {
+                return result;
+            }
+
             // validate ContentType - fail on error
             result.Add(ValidateContentType(response.Content.Headers.ContentType.ToString(), r.Validation.ContentType));
 
@@ -85,11 +91,24 @@ namespace WebValidation.Response
                     {
                         if (!string.IsNullOrEmpty(property.Field) && dict.ContainsKey(property.Field))
                         {
+                            if (property.Validation != null)
+                            {
+                                var res = Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field]));
+                            }
+
                             // null values check for the existance of the field in the payload
                             // used when values are not known
                             if (property.Value != null && !dict[property.Field].Equals(property.Value))
                             {
-                                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}"));
+                                // whole numbers map to int
+                                if (!((property.Value.GetType() == typeof(double) ||
+                                    property.Value.GetType() == typeof(float) ||
+                                    property.Value.GetType() == typeof(decimal)) &&
+                                    double.TryParse(dict[property.Field].ToString(), out double d) &&
+                                    (double)property.Value == d))
+                                {
+                                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}"));
+                                }
                             }
                         }
                         else
@@ -97,9 +116,8 @@ namespace WebValidation.Response
                             result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {property.Field}"));
                         }
                     }
-
-
                 }
+
                 catch (SerializationException se)
                 {
                     result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
@@ -131,6 +149,7 @@ namespace WebValidation.Response
 
                 result.Add(ValidateJsonArrayLength(jArray, resList));
                 result.Add(ValidateForEach(jArray.ForEach, resList));
+
                 result.Add(ValidateByIndex(jArray.ByIndex, resList));
             }
             catch (SerializationException se)
@@ -177,14 +196,12 @@ namespace WebValidation.Response
             if (byIndexList != null && byIndexList.Count > 0)
             {
                 string fieldBody;
+                double d = 0;
+                int ndx = -1;
 
                 foreach (var property in byIndexList)
                 {
-                    // nothing to validate
-                    if (property.Validation == null)
-                    {
-                        break;
-                    }
+                    ndx++;
 
                     // check index in bounds
                     if (property.Index < 0 || property.Index >= documentList.Count)
@@ -193,18 +210,47 @@ namespace WebValidation.Response
                         break;
                     }
 
-                    // set the body to entire doc or field
-                    if (property.Field == null)
-                    {
-                        fieldBody = JsonConvert.SerializeObject(documentList[(int)property.Index]);
-                    }
-                    else
-                    {
-                        fieldBody = JsonConvert.SerializeObject(documentList[(int)property.Index][property.Field]);
-                    }
-
                     // validate recursively
-                    result.Add(Validate(property.Validation, fieldBody));
+                    if (property.Validation != null)
+                    {
+                        // set the body to entire doc or field
+                        if (property.Field == null)
+                        {
+                            fieldBody = JsonConvert.SerializeObject(documentList[(int)property.Index]);
+                        }
+                        else
+                        {
+                            fieldBody = JsonConvert.SerializeObject(documentList[(int)property.Index][property.Field]);
+                        }
+
+                        // validate recursively
+                        result.Add(Validate(property.Validation, fieldBody));
+                    }
+                    else if (!string.IsNullOrEmpty(property.Field) && property.Value != null)
+                    {
+                        // null values check for the existance of the field in the payload
+                        // used when values are not known
+                        if (documentList[(int)property.Index][property.Field] != property.Value)
+                        {
+                            // whole numbers map to int
+                            if (!((property.Value.GetType() == typeof(double) ||
+                                property.Value.GetType() == typeof(float) ||
+                                property.Value.GetType() == typeof(decimal)) &&
+                                double.TryParse(documentList[(int)property.Index][property.Field].ToString(), out d) &&
+                                (double)property.Value == d))
+                            {
+                                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {documentList[(int)property.Index][property.Field]} : Expected: {property.Value}"));
+                            }
+                        }
+                    }
+                    else if (property.Value != null)
+                    {
+                        // used for checking array of simple type
+                        if (!property.Value.Equals(documentList[(int)property.Index]))
+                        {
+                            result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {documentList[(int)property.Index]} : Expected: {property.Value}"));
+                        }
+                    }
                 }
             }
 
