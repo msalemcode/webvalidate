@@ -221,6 +221,12 @@ namespace WebValidation.Parameters
                     res.ValidationErrors.Add("index: index cannot be less than 0");
                 }
 
+                // validate field, value, validation
+                if (f.Field == null && f.Value == null && f.Validation == null)
+                {
+                    res.ValidationErrors.Add("field: all fields cannot be null");
+                }
+
                 // validate recursively
                 res.Add(Validate(f.Validation));
             }

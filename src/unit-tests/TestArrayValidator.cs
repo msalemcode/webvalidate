@@ -63,6 +63,18 @@ namespace UnitTests
             };
             list.Add(f);
             Assert.True(Validator.Validate(list).Failed);
+
+            // validate field, value, validation
+            f = new JsonPropertyByIndex
+            {
+                Index = 0,
+                Field = null,
+                Value = null,
+                Validation = null
+            };
+            list.Clear();
+            list.Add(f);
+            Assert.True(Validator.Validate(list).Failed);
         }
     }
 }

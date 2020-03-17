@@ -45,7 +45,7 @@ namespace WebValidationApp
                 Usage();
 
                 // return -1 on error
-                return CheckCommandLineHelp(args) ? 0 : - 1;
+                return CheckCommandLineHelp(args) ? 0 : -1;
             }
 
             // create the test
