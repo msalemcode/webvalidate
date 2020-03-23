@@ -51,6 +51,74 @@ docker run -it --rm -v ~/t:/app/TestFiles --entrypoint bash retaildevcrew/webval
 
 ```
 
+Web Validate uses both environment variables as well as command line options for configuration. Command flags take precedence over environment variables.
+
+Web Validate works in two distinct modes. The default mode processes the input file(s) in sequential order one time and exits. The "run loop" mode runs in a continuous loop until stopped or for the specified duration. Some environment variables and command flags are only valid if run loop is specified and the application will exit and display usage information. Some parameters have different default values depending on the mode of execution.
+
+## Command Line Parameters
+
+- --help
+  - must be only parameter
+  - environment variables are ignored
+- --host string
+  - base Url (i.e. https://www.microsoft.com)
+  - required
+- --files file1 [file2 file3 ...]
+  - one or more test json files
+  - default baseline.json
+- --timeout int
+  - HTTP request timeout in seconds
+  - default 30 sec
+- --sleep int
+  - number of milliseconds to sleep between requests
+  - default 0
+- --duration int
+  - duration in seconds
+  - default process each request 1 time
+- --verbose
+  - log 200 and 300 results as well as errors
+  - default true
+
+### Loop Mode Parameters
+
+- --runloop
+  - runs the test in a continuous loop
+- --sleep int
+  - number of milliseconds to sleep between requests
+  - default 1000
+- --maxconcurrent int
+  - max concurrent requests
+  - default 100
+- --random
+  - randomize requests
+  - default false
+- --verbose
+  - log 200 and 300 results as well as errors
+  - default false
+- --telemetry appName key
+  - App Insights information
+  - default none
+
+## Environment Variables
+
+- HOST
+- FILES
+- SLEEP
+- TIMEOUT
+- DURATION
+- VERBOSE
+
+### Run Loop environment variables
+
+- RUNLOOP=true
+- SLEEP
+- DURATION
+- MAXCONCURRENT
+- VERBOSE
+- RANDOM
+- TELEMETRYKEY
+- TELEMETRYAPPNAME
+
 ## Validation Files
 
 Validation files are located in the /app/TestFiles directory and are json files that control the validation tests.
