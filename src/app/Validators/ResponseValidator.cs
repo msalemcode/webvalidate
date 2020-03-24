@@ -30,14 +30,14 @@ namespace WebValidation.Response
             // validate status code - fail on error
             result.Add(ValidateStatusCode((int)response.StatusCode, r.Validation.StatusCode));
 
-            // not found doesn't have body or headers
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            // redirects don't have body or headers
+            if ((int)response.StatusCode >= 300 && (int)response.StatusCode <= 399)
             {
                 return result;
             }
 
-            // redirects doesn't have body or headers
-            if ((int)response.StatusCode >= 300 && (int)response.StatusCode <= 399)
+            // handle framework 404s
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && response.Content.Headers.ContentType == null)
             {
                 return result;
             }

@@ -1,0 +1,4 @@
+[
+  {"Path":"/api/actors/nm12345",      "PerfTarget":{"Category": "DirectRead"},"Validation":{"StatusCode":404,"ContentType":"text/plain","ExactMatch":"Actor Not Found"}},
+  {"Path":"/api/movies/tt12345",      "PerfTarget":{"Category": "DirectRead"},"Validation":{"StatusCode":404,"ContentType":"text/plain","ExactMatch":"Movie Not Found"}},
+]
