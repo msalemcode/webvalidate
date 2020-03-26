@@ -37,7 +37,7 @@ namespace WebValidation.Response
             }
 
             // handle framework 404s
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && response.Content.Headers.ContentType == null)
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && response.Content?.Headers?.ContentType == null)
             {
                 return result;
             }
