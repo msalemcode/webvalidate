@@ -373,5 +373,32 @@ namespace WebValidation.Parameters
 
             return res;
         }
+
+        /// <summary>
+        /// validate NotContains
+        /// </summary>
+        /// <param name="notcontains">list of string</param>
+        /// <returns>ValidationResult</returns>
+        public static ValidationResult ValidateNotContains(List<string> notcontains)
+        {
+            ValidationResult res = new ValidationResult();
+
+            // null check
+            if (notcontains == null || notcontains.Count == 0)
+            {
+                return res;
+            }
+
+            // validate each value
+            foreach (string c in notcontains)
+            {
+                if (string.IsNullOrEmpty(c))
+                {
+                    res.ValidationErrors.Add("notContains: values cannot be empty");
+                }
+            }
+
+            return res;
+        }
     }
 }

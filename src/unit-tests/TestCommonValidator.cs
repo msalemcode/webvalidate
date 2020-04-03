@@ -61,6 +61,7 @@ namespace UnitTests
 
             // each element ! isnullempty
             v.Contains = new List<string> { string.Empty };
+            v.NotContains = new List<string> { string. Empty};
 
             res = Validator.Validate(v);
             Assert.True(res.Failed);

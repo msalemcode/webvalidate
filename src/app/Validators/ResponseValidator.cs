@@ -60,6 +60,7 @@ namespace WebValidation.Response
             if (v != null)
             {
                 result.Add(ValidateContains(v.Contains, body));
+                result.Add(ValidateNotContains(v.NotContains, body));
                 result.Add(ValidateExactMatch(v.ExactMatch, body));
                 result.Add(Validate(v.JsonObject, body));
 
@@ -93,7 +94,7 @@ namespace WebValidation.Response
                         {
                             if (property.Validation != null)
                             {
-                                var res = Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field]));
+                                result.Add(Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field])));
                             }
 
                             // null values check for the existance of the field in the payload
@@ -394,6 +395,32 @@ namespace WebValidation.Response
                     if (!body.Contains(c, StringComparison.InvariantCulture))
                     {
                         result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        //validate NotContains
+        public static ValidationResult ValidateNotContains(List<string> notContainsList, string body)
+        {
+            ValidationResult result = new ValidationResult();
+
+            if (notContainsList == null || notContainsList.Count == 0)
+            {
+                return result;
+            }
+
+            if (!string.IsNullOrEmpty(body))
+            {
+                // validate each rule
+                foreach (string c in notContainsList)
+                {
+                    // compare values
+                    if (body.Contains(c, StringComparison.InvariantCulture))
+                    {
+                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tNotContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
                     }
                 }
             }

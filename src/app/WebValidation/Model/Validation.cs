@@ -11,6 +11,7 @@ namespace WebValidation.Model
         public int? MaxLength { get; set; }
         public int? MaxMilliseconds { get; set; }
         public List<string> Contains { get; set; } = new List<string>();
+        public List<string> NotContains { get; set; } = new List<string>();
         public string ExactMatch { get; set; }
         public JsonArray JsonArray { get; set; }
         public List<JsonProperty> JsonObject { get; set; }
