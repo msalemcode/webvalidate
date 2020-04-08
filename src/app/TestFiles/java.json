@@ -1,4 +1,3 @@
 [
   {"Path":"/swagger-ui.html","PerfTarget":{"Category": "static"},"Validation": {"ContentType": "text/html"}},
-  {"Path":"/swagger","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"swagger","Value":"2.0"},{"Field":"info","Value":null},{"Field":"host","Value":null},{"Field":"basePath","Value":null},{"Field":"tags","Value":null},{"Field":"paths","Value":null},{"Field":"definitions","Value":null}]}}
 ]

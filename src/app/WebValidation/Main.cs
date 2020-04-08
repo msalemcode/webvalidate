@@ -13,11 +13,11 @@ namespace WebValidation
     /// </summary>
     public partial class WebV : IDisposable
     {
-        private static List<Request> _requestList;
-        private static HttpClient _client;
+        private static List<Request> requestList;
+        private static HttpClient client;
         private static Semaphore LoopController;
 
-        private Config _config = null;
+        private Config config = null;
 
         private readonly Dictionary<string, PerfTarget> Targets = new Dictionary<string, PerfTarget>();
 
@@ -27,26 +27,26 @@ namespace WebValidation
         /// <param name="config">Config</param>
         public WebV(Config config)
         {
-            if (config == null || config.FileList == null || string.IsNullOrEmpty(config.Host))
+            if (config == null || config.FileList == null || string.IsNullOrEmpty(config.Server))
             {
                 throw new ArgumentNullException(nameof(config));
             }
 
-            _config = config;
+            this.config = config;
 
             // setup the HttpClient
-            _client = OpenHttpClient(config.Host);
+            client = OpenHttpClient(config.Server);
 
             // setup the semaphore
-            LoopController = new Semaphore(_config.MaxConcurrentRequests, _config.MaxConcurrentRequests);
+            LoopController = new Semaphore(this.config.MaxConcurrentRequests, this.config.MaxConcurrentRequests);
 
             // load the performance targets
             Targets = LoadPerfTargets();
 
             // load the requests from json files
-            _requestList = LoadValidateRequests(config.FileList);
+            requestList = LoadValidateRequests(config.FileList);
 
-            if (_requestList == null || _requestList.Count == 0)
+            if (requestList == null || requestList.Count == 0)
             {
                 throw new ArgumentException("RequestList is empty");
             }
@@ -62,7 +62,7 @@ namespace WebValidation
         {
             return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {
-                Timeout = new TimeSpan(0, 0, _config.RequestTimeout),
+                Timeout = new TimeSpan(0, 0, config.Timeout),
                 BaseAddress = new Uri(host)
             };
         }
@@ -86,7 +86,7 @@ namespace WebValidation
             int validationFailureCount = 0;
 
             // send each request
-            foreach (Request r in _requestList)
+            foreach (Request r in requestList)
             {
                 try
                 {
@@ -108,7 +108,7 @@ namespace WebValidation
                     // sleep if configured
                     if (config.SleepMs > 0)
                     {
-                        duration = config.SleepMs - (int)pl.Duration;
+                        duration = (int)config.SleepMs - (int)pl.Duration;
 
                         if (duration > 0)
                         {
@@ -201,7 +201,7 @@ namespace WebValidation
                 index = state.Random.Next(0, state.MaxIndex);
             }
 
-            Request req = _requestList[index];
+            Request req = requestList[index];
             DateTime dt = DateTime.UtcNow;
 
             try
@@ -231,7 +231,7 @@ namespace WebValidation
         /// </summary>
         private static void DisplayStartupMessage(Config config)
         {
-            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {WebValidationApp.Version.AssemblyVersion}\n\t\tHost: {config.Host}\n\t\t");
+            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {WebValidationApp.Version.AssemblyVersion}\n\t\tHost: {config.Server}\n\t\t");
 
             msg += "Files: ";
             if (config.FileList.Count > 1)
@@ -247,16 +247,16 @@ namespace WebValidation
                 msg += config.FileList[0].Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase);
             }
 
-            msg += "\n\t\tSleep:" + config.SleepMs.ToString(CultureInfo.InvariantCulture);
+            msg += "\n\t\tSleep: " + config.SleepMs.ToString(CultureInfo.InvariantCulture);
             msg += "\n\t\tMaxConcurrent: " + config.MaxConcurrentRequests.ToString(CultureInfo.InvariantCulture);
             if (config.Duration > 0)
             {
                 msg += "\n\t\tDuration: " + config.Duration.ToString(CultureInfo.InvariantCulture);
             }
             msg += config.Random ? "\n\t\tRandom" : string.Empty;
-            msg += config.Verbose != null && (bool)config.Verbose ? "\n\t\tVerbose" : string.Empty;
+            msg += config.Verbose ? "\n\t\tVerbose" : string.Empty;
 
-            msg += string.IsNullOrEmpty(config.TelemetryApp) ? string.Empty : string.Format(CultureInfo.InvariantCulture, $"\n\t\tTelemetry: {config.TelemetryApp} {config.TelemetryKey}");
+            msg += string.IsNullOrEmpty(config.TelemetryName) ? string.Empty : string.Format(CultureInfo.InvariantCulture, $"\n\t\tTelemetry: {config.TelemetryName} {config.TelemetryKey}");
 
             Console.WriteLine(msg);
         }
@@ -270,7 +270,7 @@ namespace WebValidation
         /// <returns></returns>
         public bool RunLoop(Config config, CancellationToken token)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            this.config = config ?? throw new ArgumentNullException(nameof(config));
 
             if (token == null)
             {
@@ -288,7 +288,7 @@ namespace WebValidation
             // create the shared state
             TimerRequestState state = new TimerRequestState
             {
-                MaxIndex = _requestList.Count,
+                MaxIndex = requestList.Count,
                 Test = this,
 
                 // current hour
@@ -308,7 +308,7 @@ namespace WebValidation
             DisplayStartupMessage(config);
 
             // start the timers
-            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
+            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, (int)config.SleepMs);
             Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
 
             // run the wait loop
@@ -368,7 +368,7 @@ namespace WebValidation
                 DateTime dt = DateTime.UtcNow;
 
                 // process the response
-                using HttpResponseMessage resp = await _client.SendAsync(req).ConfigureAwait(false);
+                using HttpResponseMessage resp = await client.SendAsync(req).ConfigureAwait(false);
                 string body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                 double duration = Math.Round(DateTime.UtcNow.Subtract(dt).TotalMilliseconds, 0);
@@ -384,9 +384,9 @@ namespace WebValidation
             LogToConsole(request, valid, perfLog);
 
             // add the metrics
-            if (_config.Metrics != null)
+            if (config.Metrics != null)
             {
-                _config.Metrics.Add(perfLog.StatusCode, perfLog.Duration, perfLog.Category, perfLog.Validated, perfLog.PerfLevel, perfLog.ContentLength, request.Path, perfLog.ValidationResults);
+                config.Metrics.Add(perfLog.StatusCode, perfLog.Duration, perfLog.Category, perfLog.Validated, perfLog.PerfLevel, perfLog.ContentLength, request.Path, perfLog.ValidationResults);
             }
 
             return perfLog;
@@ -474,7 +474,7 @@ namespace WebValidation
             }
 
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
-            if ((_config.Verbose != null && (bool)_config.Verbose) || perfLog.StatusCode > 399 || !valid.Validated)
+            if ((config.Verbose) || perfLog.StatusCode > 399 || !valid.Validated)
             {
                 string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
 

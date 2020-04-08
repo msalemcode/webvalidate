@@ -14,7 +14,7 @@ namespace WebValidation
         public string TelemetryAppName { get; set; }
 
         // needs to be member variable for IDispose::Dispose
-        private readonly TelemetryConfiguration _telemetryConfig;
+        private readonly TelemetryConfiguration telemetryConfig;
 
         /// <summary>
         /// CTOR
@@ -28,12 +28,11 @@ namespace WebValidation
                 TelemetryAppName = appName;
 
                 // create telemetry config
-                // needs to be member variable for IDisopse::Dispose
-                _telemetryConfig = new TelemetryConfiguration { InstrumentationKey = telemetryKey };
-                _telemetryConfig.TelemetryChannel.DeveloperMode = true;
+                telemetryConfig = new TelemetryConfiguration { InstrumentationKey = telemetryKey };
+                telemetryConfig.TelemetryChannel.DeveloperMode = true;
 
                 // create telemetry client
-                TelemetryClient = new TelemetryClient(_telemetryConfig);
+                TelemetryClient = new TelemetryClient(telemetryConfig);
             }
         }
 
@@ -92,9 +91,9 @@ namespace WebValidation
         /// </summary>
         public void Dispose()
         {
-            if (_telemetryConfig != null)
+            if (telemetryConfig != null)
             {
-                _telemetryConfig.Dispose();
+                telemetryConfig.Dispose();
             }
         }
     }

@@ -6,16 +6,27 @@ namespace UnitTests
 {
     public class TestEndToEnd
     {
+        Config BuildConfig(string server)
+        {
+            Config cfg = new Config
+            {
+                Server = "https://" + server + ".azurewebsites.net"
+            };
+            cfg.Timeout = 30;
+            cfg.MaxConcurrentRequests = 100;
+            cfg.MaxErrors = 10;
+
+            cfg.FileList.Add("dotnet.json");
+            cfg.FileList.Add("baseline.json");
+            cfg.FileList.Add("bad.json");
+
+            return cfg;
+        }
+
         [Fact]
         public async Task FroyoTest()
         {
-            using Config cfg = new Config
-            {
-                Host = "https://froyo.azurewebsites.net"
-            };
-
-            cfg.FileList.Add("TestFiles/dotnet.json");
-            cfg.FileList.Add("TestFiles/baseline.json");
+            using Config cfg = BuildConfig("froyo");
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
@@ -25,14 +36,8 @@ namespace UnitTests
         [Fact]
         public async Task SherbertTest()
         {
-            using Config cfg = new Config
-            {
-                Host = "https://sherbert.azurewebsites.net"
-            };
-
-            // not working yet - cfg.FileList.Add("TestFiles/bad.json");
-            cfg.FileList.Add("TestFiles/baseline.json");
-            cfg.FileList.Add("TestFiles/node.json");
+            using Config cfg = BuildConfig("sherbert");
+            cfg.FileList.RemoveAt(0);
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
@@ -42,13 +47,7 @@ namespace UnitTests
         [Fact]
         public async Task BluebellTest()
         {
-            using Config cfg = new Config
-            {
-                Host = "https://bluebell.azurewebsites.net"
-            };
-
-            cfg.FileList.Add("TestFiles/baseline.json");
-            cfg.FileList.Add("TestFiles/dotnet.json");
+            using Config cfg = BuildConfig("bluebell");
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);

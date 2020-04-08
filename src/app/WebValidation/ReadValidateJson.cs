@@ -21,7 +21,14 @@ namespace WebValidation
             // read each json file
             foreach (string inputFile in fileList)
             {
-                list = ReadJson(inputFile);
+                if (inputFile.IndexOf('/', StringComparison.OrdinalIgnoreCase) < 0 && inputFile.IndexOf('\\', StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    list = ReadJson("TestFiles/" + inputFile);
+                }
+                else
+                {
+                    list = ReadJson(inputFile);
+                }
 
                 // add contents to full list
                 if (list != null && list.Count > 0)

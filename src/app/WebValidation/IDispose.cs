@@ -23,13 +23,13 @@ namespace WebValidation
 
             if (disposing)
             {
-                if (_client != null)
+                if (client != null)
                 {
-                    _client.Dispose();
+                    client.Dispose();
                 }
-                if (_config != null)
+                if (config != null)
                 {
-                    _config.Dispose();
+                    config.Dispose();
                 }
             }
 
