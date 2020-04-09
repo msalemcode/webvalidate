@@ -1,0 +1,3 @@
+[
+    {"Path":"/swagger/swagger.json","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"openapi","Value":null},{"Field":"info","Value":null},{"Field":"paths","Value":null},{"Field":"components","Value":null}]}},
+]

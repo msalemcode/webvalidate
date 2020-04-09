@@ -59,10 +59,9 @@ namespace WebValidation
             // make it easier to pass server value
             if (!config.Server.StartsWith("http", StringComparison.OrdinalIgnoreCase))
             {
-                if (config.Server.StartsWith("localhost", StringComparison.OrdinalIgnoreCase) ||
-                    config.Server.StartsWith("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                if (config.Server.StartsWith("localhost", StringComparison.OrdinalIgnoreCase) || config.Server.StartsWith("127.0.0.1", StringComparison.OrdinalIgnoreCase))
                 {
-                    config.Server = "http://" + config.Server + ":4120";
+                    config.Server = "http://" + config.Server;
                 }
                 else
                 {

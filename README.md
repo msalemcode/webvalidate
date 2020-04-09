@@ -1,18 +1,18 @@
-# webvalidate - A web request validation tool
+# Web Validate - A web request validation tool
 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Docker Image Build](https://github.com/retaildevcrews/webvalidate/workflows/Docker%20Image%20Build/badge.svg)
 
-Web Validate (webv) is a web request validation tool that we use to run integration tests and long-running smoke tests.
+Web Validate (WebV) is a web request validation tool that we use to run integration tests and long-running smoke tests.
 
-## webv Quick Start
+## WebV Quick Start
 
-Run a sample Validation Test against `microsoft.com`
+Run a sample validation test against `microsoft.com`
 
 ```bash
 
 # run the tests from Docker
-docker run -it --rm retaildevcrew/webvalidate --host https://www.microsoft.com --files msft.json
+docker run -it --rm retaildevcrew/webvalidate --server https://www.microsoft.com --files msft.json
 
 ```
 
@@ -21,13 +21,13 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 ```bash
 
 # baseline tests
-docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files baseline.json
+docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files baseline.json
 
 # dotnet specific tests
-docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files dotnet.json
+docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files dotnet.json
 
 # long running benchmark test
-docker run -it --rm retaildevcrew/webvalidate --host https://froyo.azurewebsites.net --files benchmark.json
+docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files benchmark.json
 
 ```
 
@@ -44,10 +44,12 @@ Use your own test files
 
 ```bash
 
-# assuming you want to mount ~/t to the containers /app/TestFiles
+# assuming you want to mount ~/webv to the containers /app/TestFiles
 # this will start bash so you can verify the mount worked correctly
-# remove "--entrypoint bash" and add proper parameters to run webv
-docker run -it --rm -v ~/t:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
+docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
+
+# run a test against a local web server running on port 8080 using ~/webv/foo.json
+docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files foo.json
 
 ```
 
@@ -57,36 +59,44 @@ Web Validate works in two distinct modes. The default mode processes the input f
 
 ## Command Line Parameters
 
-- --help
-  - must be only parameter
+- --version
+  - other parameters are ignored
   - environment variables are ignored
-- --host string
-  - base Url (i.e. https://www.microsoft.com)
+- -h --help
+  - other parameters are ignored
+  - environment variables are ignored
+- -d --dry-run
+  - validate parameters but do not execute tests
+- -s --server string
+  - base Url (i.e. `https://www.microsoft.com`)
   - required
-- --files file1 [file2 file3 ...]
-  - one or more test json files
+- -f --files file1 [file2 file3 ...]
+  - one or more json test files
   - default baseline.json
-- --timeout int
-  - HTTP request timeout in seconds
-  - default 30 sec
-- --sleep int
+  - default location ./TestFiles/
+- -l --sleep int
   - number of milliseconds to sleep between requests
   - default 0
-- --duration int
-  - duration in seconds
-  - default process each request 1 time
+- --max-errors int
+  - end test after max-errors
+- -t --timeout int
+  - HTTP request timeout in seconds
+  - default 30 sec
 - --verbose
   - log 200 and 300 results as well as errors
   - default true
 
-### Loop Mode Parameters
+### RunLoop Mode Parameters
 
-- --runloop
+- -r --runloop
   - runs the test in a continuous loop
-- --sleep int
+- -l --sleep int
   - number of milliseconds to sleep between requests
   - default 1000
-- --maxconcurrent int
+- --duration int
+  - run text for duration seconds then exit
+  - default run until OS signal
+- --max-concurrent int
   - max concurrent requests
   - default 100
 - --random
@@ -95,29 +105,32 @@ Web Validate works in two distinct modes. The default mode processes the input f
 - --verbose
   - log 200 and 300 results as well as errors
   - default false
-- --telemetry appName key
-  - App Insights information
+- --telemetry-name appName
+  - App Insights application name
   - default none
+  - both telemetry-name and telemetry-key must be specified or omitted
+- --telemetry-key key
+  - App Insights key
+  - default none
+  - both telemetry-name and telemetry-key must be specified or omitted
 
 ## Environment Variables
 
-- HOST
-- FILES
-- SLEEP
-- TIMEOUT
-- DURATION
-- VERBOSE
+- SERVER=string
+- FILES=space separated list of string
+- SLEEP=int
+- TIMEOUT=int
+- VERBOSE=bool
+- MAX_ERRORS=int
 
-### Run Loop environment variables
+### Additional run Loop environment variables
 
-- RUNLOOP=true
-- SLEEP
-- DURATION
-- MAXCONCURRENT
-- VERBOSE
-- RANDOM
-- TELEMETRYKEY
-- TELEMETRYAPPNAME
+- RUN_LOOP=bool
+- DURATION=int
+- MAX_CONCURRENT=int
+- RANDOM=bool
+- TELEMETRY_NAME=string
+- TELEMETRY_KEY=string
 
 ## Validation Files
 
