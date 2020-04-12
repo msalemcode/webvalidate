@@ -14,9 +14,6 @@ namespace WebValidationApp
         // public properties
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
 
-        // set to true in ctl-c handler
-        private static bool isCancelled = false;
-
         /// <summary>
         /// Main entry point
         /// </summary>
@@ -24,14 +21,6 @@ namespace WebValidationApp
         public static async Task<int> Main(string[] args)
         {
             List<string> cmd = MergeEnvVarIntoCommandArgs(args);
-
-            // handle version
-            // ignores all other parameters
-            if (cmd.Contains("--version"))
-            {
-                Console.WriteLine(Version.AssemblyVersion);
-                return 0;
-            }
 
             // build the System.CommandLine.RootCommand
             RootCommand root = BuildRootCommand();
@@ -384,8 +373,11 @@ namespace WebValidationApp
 
         public static async Task<int> Run(Config config)
         {
-            // create the test
-            using WebV webv = new WebValidation.WebV(config);
+            if (config == null)
+            {
+                Console.WriteLine("Config is null");
+                return -1;
+            }
 
             // don't run the test on a dry run
             if (config.DryRun)
@@ -393,22 +385,18 @@ namespace WebValidationApp
                 return DoDryRun(config);
             }
 
-            // run in a loop
+            // create the test
+            using WebV webv = new WebValidation.WebV(config);
+
             if (config.RunLoop)
             {
-                // RunLoop should only end on a signal
-                if (!webv.RunLoop(config, TokenSource.Token))
-                {
-                    Console.WriteLine("RunLoop ended on error");
-                    return isCancelled ? 0 : -1;
-                }
-
-                return 0;
+                // run in a loop
+                return webv.RunLoop(config, TokenSource.Token);
             }
             else
             {
                 // run one iteration
-                return await webv.RunOnce(config).ConfigureAwait(false) ? 0 : -1;
+                return await webv.RunOnce(config).ConfigureAwait(false);
             }
         }
 
@@ -419,14 +407,13 @@ namespace WebValidationApp
         {
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
             {
-                isCancelled = true;
                 e.Cancel = true;
                 TokenSource.Cancel();
 
                 Console.WriteLine(Constants.ControlCMessage);
 
                 // give tasks a chance to shutdown
-                Task.Delay(500);
+                Task.Delay(500).Wait();
 
                 // end the app
                 Environment.Exit(0);

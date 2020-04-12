@@ -4,8 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>WebValidationApp</RootNamespace>
-    <AssemblyVersion>1.0.7.0</AssemblyVersion>
-    <FileVersion>1.0.7.0</FileVersion>
+    <Version>1.0.7+$([System.DateTime]::UtcNow.ToString(`MMdd-HHmm`))</Version>
+    <Copyright>Copyright (c) Microsoft Corporation. All rights reserved.</Copyright>
     <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <LangVersion>8.0</LangVersion>

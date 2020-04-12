@@ -62,7 +62,7 @@ namespace UnitTests
             Assert.Null(wv.ReadJson("foo"));
 
             // test with null config
-            Assert.False(await wv.RunOnce(null).ConfigureAwait(false));
+            Assert.NotEqual(0, await wv.RunOnce(null).ConfigureAwait(false));
 
             cfg.Dispose();
         }

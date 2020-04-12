@@ -6,15 +6,13 @@ namespace WebValidation.Model
     {
         public bool Failed => ValidationErrors.Count > 0;
 
-        public bool Validated => ValidationErrors.Count == 0;
-
         public List<string> ValidationErrors { get; } = new List<string>();
 
         public void Add(ValidationResult result)
         {
             if (result != null)
             {
-                if (result.ValidationErrors != null && !result.Validated)
+                if (result.ValidationErrors != null && result.ValidationErrors.Count > 0)
                 {
                     ValidationErrors.AddRange(result.ValidationErrors);
                 }

@@ -71,12 +71,12 @@ namespace WebValidation
         /// Run the validation test one time
         /// </summary>
         /// <returns>bool</returns>
-        public async Task<bool> RunOnce(Config config)
+        public async Task<int> RunOnce(Config config)
         {
             if (config == null)
             {
                 Console.WriteLine("RunOnce:Config is null");
-                return false;
+                return -1;
             }
 
             int duration;
@@ -94,7 +94,7 @@ namespace WebValidation
 
                     pl = await ExecuteRequest(r).ConfigureAwait(false);
 
-                    if (!pl.IsValid)
+                    if (!pl.Validated)
                     {
                         validationFailureCount++;
 
@@ -136,7 +136,7 @@ namespace WebValidation
                 Console.WriteLine($"Validation Errors: {validationFailureCount}");
             }
 
-            return errorCount == 0;
+            return errorCount;
         }
 
         /// <summary>
@@ -268,7 +268,7 @@ namespace WebValidation
         /// <param name="config">Config</param>
         /// <param name="token">CancellationToken</param>
         /// <returns></returns>
-        public bool RunLoop(Config config, CancellationToken token)
+        public int RunLoop(Config config, CancellationToken token)
         {
             this.config = config ?? throw new ArgumentNullException(nameof(config));
 
@@ -344,7 +344,7 @@ namespace WebValidation
             }
 
             // graceful exit
-            return true;
+            return 0;
         }
 
         /// <summary>
@@ -366,6 +366,21 @@ namespace WebValidation
             using (HttpRequestMessage req = new HttpRequestMessage(new HttpMethod(request.Verb), request.Path))
             {
                 DateTime dt = DateTime.UtcNow;
+
+                // add the headers to the http request
+                if (request.Headers != null && request.Headers.Count > 0)
+                {
+                    foreach (var key in request.Headers.Keys)
+                    {
+                        req.Headers.Add(key, request.Headers[key]);
+                    }
+                }
+
+                // add the body to the http request
+                if (!string.IsNullOrEmpty(request.Body))
+                {
+                    req.Content = new StringContent(request.Body);
+                }
 
                 // process the response
                 using HttpResponseMessage resp = await client.SendAsync(req).ConfigureAwait(false);
@@ -414,12 +429,11 @@ namespace WebValidation
             {
                 StatusCode = statusCode,
                 Category = request?.PerfTarget?.Category ?? string.Empty,
-                Validated = validationResult.Validated,
+                Validated = !validationResult.Failed,
                 ValidationResults = string.Join('\n', validationResult.ValidationErrors),
                 Duration = duration,
                 ContentLength = contentLength,
-                PerfLevel = 0,
-                IsValid = !validationResult.Failed
+                PerfLevel = 0
             };
 
             // determine the Performance Level based on category
@@ -474,11 +488,11 @@ namespace WebValidation
             }
 
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
-            if ((config.Verbose) || perfLog.StatusCode > 399 || !valid.Validated)
+            if ((config.Verbose) || perfLog.StatusCode > 399 || valid.Failed)
             {
                 string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
 
-                if (!valid.Validated)
+                if (valid.Failed)
                 {
                     log += "\t" + string.Join('\t', valid.ValidationErrors);
                 }

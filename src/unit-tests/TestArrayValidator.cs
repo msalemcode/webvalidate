@@ -52,7 +52,7 @@ namespace UnitTests
             JsonPropertyByIndex f;
 
             // empty list is valid
-            Assert.True(Validator.Validate(list).Validated);
+            Assert.False(Validator.Validate(list).Failed);
 
             // validate index < 0 fails
             f = new JsonPropertyByIndex

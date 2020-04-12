@@ -30,7 +30,7 @@ namespace UnitTests
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
-            Assert.True(await wv.RunOnce(cfg).ConfigureAwait(false));
+            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
         }
 
         [Fact]
@@ -41,7 +41,7 @@ namespace UnitTests
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
-            Assert.True(await wv.RunOnce(cfg).ConfigureAwait(false));
+            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
         }
 
         [Fact]
@@ -51,7 +51,7 @@ namespace UnitTests
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
-            Assert.True(await wv.RunOnce(cfg).ConfigureAwait(false));
+            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Reflection;
 
 namespace WebValidationApp
 {
@@ -17,13 +18,10 @@ namespace WebValidationApp
             {
                 if (string.IsNullOrEmpty(version))
                 {
-                    // use reflection to get the assembly version
-                    string file = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                    DateTime dt = System.IO.File.GetCreationTime(file);
-                    System.Version aVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-
-                    // use major.minor and the build date as the version
-                    version = string.Format(CultureInfo.InvariantCulture, $"{aVer.Major}.{aVer.Minor}.{aVer.Build}+{dt.ToString("MMdd.HHmm", CultureInfo.InvariantCulture)}");
+                    if (Attribute.GetCustomAttribute(Assembly.GetEntryAssembly(), typeof(AssemblyInformationalVersionAttribute)) is AssemblyInformationalVersionAttribute v)
+                    {
+                        version = v.InformationalVersion;
+                    }
                 }
 
                 return version;

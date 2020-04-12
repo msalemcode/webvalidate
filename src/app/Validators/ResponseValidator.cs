@@ -16,7 +16,7 @@ namespace WebValidation.Response
         {
             ValidationResult result = new ValidationResult();
 
-            if (r == null || r.Validation == null || body == null)
+            if (r == null || r.Validation == null)
             {
                 return result;
             }
@@ -30,20 +30,38 @@ namespace WebValidation.Response
             // validate status code - fail on error
             result.Add(ValidateStatusCode((int)response.StatusCode, r.Validation.StatusCode));
 
+            // don't validate further if the status code is wrong
+            if (result.Failed)
+            {
+                return result;
+            }
+
             // redirects don't have body or headers
             if ((int)response.StatusCode >= 300 && (int)response.StatusCode <= 399)
             {
                 return result;
             }
 
-            // handle framework 404s
-            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && response.Content?.Headers?.ContentType == null)
+            // handle framework errors
+            if (response.Content?.Headers?.ContentType == null)
             {
                 return result;
             }
 
             // validate ContentType - fail on error
             result.Add(ValidateContentType(response.Content.Headers.ContentType.ToString(), r.Validation.ContentType));
+
+            // don't validate further if the content type is wrong
+            if (result.Failed)
+            {
+                return result;
+            }
+
+            // make sure the validators don't throw an exception but still fail
+            if (body == null)
+            {
+                body = string.Empty;
+            }
 
             // run validation rules
             result.Add(ValidateLength((long)response.Content.Headers.ContentLength, r.Validation));
@@ -59,6 +77,12 @@ namespace WebValidation.Response
 
             if (v != null)
             {
+                // make sure the validators don't throw an exception but still fail
+                if (body == null)
+                {
+                    body = string.Empty;
+                }
+
                 result.Add(ValidateContains(v.Contains, body));
                 result.Add(ValidateNotContains(v.NotContains, body));
                 result.Add(ValidateExactMatch(v.ExactMatch, body));
@@ -81,53 +105,56 @@ namespace WebValidation.Response
                 return result;
             }
 
-            if (properties != null && properties.Count > 0)
+            // make sure the validators don't throw an exception but still fail
+            if (body == null)
             {
-                try
+                body = string.Empty;
+            }
+
+            try
+            {
+                // deserialize the json into an IDictionary
+                IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(body);
+
+                foreach (JsonProperty property in properties)
                 {
-                    // deserialize the json into an IDictionary
-                    IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(body);
-
-                    foreach (JsonProperty property in properties)
+                    if (!string.IsNullOrEmpty(property.Field) && dict.ContainsKey(property.Field))
                     {
-                        if (!string.IsNullOrEmpty(property.Field) && dict.ContainsKey(property.Field))
+                        if (property.Validation != null)
                         {
-                            if (property.Validation != null)
-                            {
-                                result.Add(Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field])));
-                            }
-
-                            // null values check for the existance of the field in the payload
-                            // used when values are not known
-                            if (property.Value != null && !dict[property.Field].Equals(property.Value))
-                            {
-                                // whole numbers map to int
-                                if (!((property.Value.GetType() == typeof(double) ||
-                                    property.Value.GetType() == typeof(float) ||
-                                    property.Value.GetType() == typeof(decimal)) &&
-                                    double.TryParse(dict[property.Field].ToString(), out double d) &&
-                                    (double)property.Value == d))
-                                {
-                                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}"));
-                                }
-                            }
+                            result.Add(Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field])));
                         }
-                        else
+
+                        // null values check for the existance of the field in the payload
+                        // used when values are not known
+                        if (property.Value != null && !dict[property.Field].Equals(property.Value))
                         {
-                            result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {property.Field}"));
+                            // whole numbers map to int
+                            if (!((property.Value.GetType() == typeof(double) ||
+                                property.Value.GetType() == typeof(float) ||
+                                property.Value.GetType() == typeof(decimal)) &&
+                                double.TryParse(dict[property.Field].ToString(), out double d) &&
+                                (double)property.Value == d))
+                            {
+                                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}"));
+                            }
                         }
                     }
+                    else
+                    {
+                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {property.Field}"));
+                    }
                 }
+            }
 
-                catch (SerializationException se)
-                {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
-                }
+            catch (SerializationException se)
+            {
+                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
+            }
 
-                catch (Exception ex)
-                {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {ex.Message}"));
-                }
+            catch (Exception ex)
+            {
+                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {ex.Message}"));
             }
 
             return result;
@@ -138,9 +165,15 @@ namespace WebValidation.Response
         {
             ValidationResult result = new ValidationResult();
 
-            if (jArray == null || string.IsNullOrWhiteSpace(body))
+            if (jArray == null)
             {
                 return result;
+            }
+
+            // make sure the validators don't throw an exception but still fail
+            if (body == null)
+            {
+                body = string.Empty;
             }
 
             try
@@ -359,18 +392,22 @@ namespace WebValidation.Response
         {
             ValidationResult result = new ValidationResult();
 
+            // nothing to validate
             if (exactMatch == null)
             {
                 return result;
             }
 
-            if (!string.IsNullOrEmpty(body) && exactMatch != null)
+            // make sure the validators don't throw an exception but still fail
+            if (body == null)
             {
-                // compare values
-                if (exactMatch != null && body != exactMatch)
-                {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tExactMatch: Actual : {body.PadRight(40).Substring(0, 40).Trim()} : Expected: {exactMatch.PadRight(40).Substring(0, 40).Trim()}"));
-                }
+                body = string.Empty;
+            }
+
+            // compare values
+            if (body != exactMatch)
+            {
+                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tExactMatch: Actual : {body.PadRight(40).Substring(0, 40).Trim()} : Expected: {exactMatch.PadRight(40).Substring(0, 40).Trim()}"));
             }
 
             return result;
@@ -386,16 +423,19 @@ namespace WebValidation.Response
                 return result;
             }
 
-            if (!string.IsNullOrEmpty(body) && containsList != null && containsList.Count > 0)
+            // make sure the validators don't throw an exception but still fail
+            if (body == null)
             {
-                // validate each rule
-                foreach (string c in containsList)
+                body = string.Empty;
+            }
+
+            // validate each rule
+            foreach (string c in containsList)
+            {
+                // compare values
+                if (!body.Contains(c, StringComparison.InvariantCulture))
                 {
-                    // compare values
-                    if (!body.Contains(c, StringComparison.InvariantCulture))
-                    {
-                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
-                    }
+                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
                 }
             }
 
@@ -407,21 +447,19 @@ namespace WebValidation.Response
         {
             ValidationResult result = new ValidationResult();
 
-            if (notContainsList == null || notContainsList.Count == 0)
+            // nothing to validate
+            if (notContainsList == null || notContainsList.Count == 0 || string.IsNullOrEmpty(body))
             {
                 return result;
             }
 
-            if (!string.IsNullOrEmpty(body))
+            // validate each rule
+            foreach (string c in notContainsList)
             {
-                // validate each rule
-                foreach (string c in notContainsList)
+                // compare values
+                if (body.Contains(c, StringComparison.InvariantCulture))
                 {
-                    // compare values
-                    if (body.Contains(c, StringComparison.InvariantCulture))
-                    {
-                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tNotContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
-                    }
+                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tNotContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
                 }
             }
 

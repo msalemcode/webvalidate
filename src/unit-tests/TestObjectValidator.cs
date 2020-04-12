@@ -13,7 +13,7 @@ namespace UnitTests
             List<JsonProperty> properties = null;
 
             // validate json object is null
-            Assert.True(Validator.Validate(properties).Validated);
+            Assert.False(Validator.Validate(properties).Failed);
 
             // Field can't be empty
             properties = new List<JsonProperty> { new JsonProperty { Field = string.Empty } };
@@ -27,7 +27,7 @@ namespace UnitTests
             // validate empty list
             properties = new List<JsonProperty>();
             Assert.Empty(properties);
-            Assert.True(Validator.Validate(properties).Validated);
+            Assert.False(Validator.Validate(properties).Failed);
 
             // validate adding a property
             properties.Add(new JsonProperty());
