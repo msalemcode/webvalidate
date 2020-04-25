@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Globalization;
 using System.Reflection;
 
-namespace WebValidationApp
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Assembly Versioning

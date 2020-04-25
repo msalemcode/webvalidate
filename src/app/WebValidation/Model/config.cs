@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.CommandLine.Parsing;
 using System.Globalization;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Web Validation Test Configuration

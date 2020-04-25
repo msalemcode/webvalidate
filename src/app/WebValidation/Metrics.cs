@@ -3,7 +3,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using System;
 using System.Collections.Generic;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Test metrics

@@ -1,9 +1,9 @@
+using CSE.WebValidate.Model;
+using CSE.WebValidate.Parameters;
 using System.Collections.Generic;
-using WebValidation.Model;
-using WebValidation.Parameters;
 using Xunit;
 
-namespace UnitTests
+namespace CSE.WebValidate.Tests.Unit
 {
     public class TestJsonObjectValidator
     {

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace WebValidation.Model
+namespace CSE.WebValidate.Model
 {
     public class PerfTarget
     {

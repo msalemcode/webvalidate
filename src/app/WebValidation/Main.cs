@@ -1,12 +1,12 @@
-﻿using System;
+﻿using CSE.WebValidate.Model;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using WebValidation.Model;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Web Validation Test
@@ -108,7 +108,7 @@ namespace WebValidation
                     // sleep if configured
                     if (config.SleepMs > 0)
                     {
-                        duration = (int)config.SleepMs - (int)pl.Duration;
+                        duration = config.SleepMs - (int)pl.Duration;
 
                         if (duration > 0)
                         {
@@ -231,7 +231,7 @@ namespace WebValidation
         /// </summary>
         private static void DisplayStartupMessage(Config config)
         {
-            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {WebValidationApp.Version.AssemblyVersion}\n\t\tHost: {config.Server}\n\t\t");
+            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {CSE.WebValidate.Version.AssemblyVersion}\n\t\tHost: {config.Server}\n\t\t");
 
             msg += "Files: ";
             if (config.FileList.Count > 1)
@@ -308,7 +308,7 @@ namespace WebValidation
             DisplayStartupMessage(config);
 
             // start the timers
-            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, (int)config.SleepMs);
+            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
             Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
 
             // run the wait loop

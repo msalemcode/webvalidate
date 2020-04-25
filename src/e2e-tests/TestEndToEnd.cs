@@ -1,8 +1,7 @@
 using System.Threading.Tasks;
-using WebValidation;
 using Xunit;
 
-namespace UnitTests
+namespace CSE.WebValidate.Tests.EndToEnd
 {
     public class TestEndToEnd
     {

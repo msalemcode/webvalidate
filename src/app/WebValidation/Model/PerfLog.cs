@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WebValidation.Model
+namespace CSE.WebValidate.Model
 {
     public class PerfLog
     {

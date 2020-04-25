@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace WebValidationApp
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Constants used in the app

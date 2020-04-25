@@ -1,13 +1,13 @@
-﻿using Newtonsoft.Json;
+﻿using CSE.WebValidate.Model;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Globalization;
 using System.Net.Http;
 using System.Runtime.Serialization;
-using WebValidation.Model;
 
-namespace WebValidation.Response
+namespace CSE.WebValidate.Response
 {
     public static class Validator
     {

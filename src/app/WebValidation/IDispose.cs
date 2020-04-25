@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     public partial class WebV : IDisposable
     {

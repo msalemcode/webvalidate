@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using CSE.WebValidate.Model;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using WebValidation.Model;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     public partial class WebV : IDisposable
     {

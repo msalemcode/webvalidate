@@ -1,10 +1,7 @@
-using System;
 using System.Threading.Tasks;
-using WebValidation;
-using WebValidationApp;
 using Xunit;
 
-namespace UnitTests
+namespace CSE.WebValidate.Tests.Unit
 {
     public class TestApp
     {
@@ -111,10 +108,7 @@ namespace UnitTests
         [Fact]
         public void VersionTest()
         {
-            // version format is 1.0.0+MMdd.hhmm
-            // will need to be updated when version number changes
-            Assert.NotNull(WebValidationApp.Version.AssemblyVersion);
-            Assert.StartsWith("1.0.7+", WebValidationApp.Version.AssemblyVersion, StringComparison.InvariantCultureIgnoreCase);
+            Assert.NotNull(CSE.WebValidate.Version.AssemblyVersion);
         }
 
         [Fact]

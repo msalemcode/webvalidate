@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Threading;
 using System.Threading.Tasks;
-using WebValidation;
 
-namespace WebValidationApp
+namespace CSE.WebValidate
 {
     public sealed class App : IDisposable
     {
@@ -236,7 +234,7 @@ namespace WebValidationApp
             }
 
             // both name and key have to be set
-            if (name == null || key == null )
+            if (name == null || key == null)
             {
                 return "--telemetry-name and --telemetry-key must both be specified or omitted";
             }
@@ -386,7 +384,7 @@ namespace WebValidationApp
             }
 
             // create the test
-            using WebV webv = new WebValidation.WebV(config);
+            using WebV webv = new CSE.WebValidate.WebV(config);
 
             if (config.RunLoop)
             {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WebValidation
+namespace CSE.WebValidate
 {
     /// <summary>
     /// Shared state for the Timer Request Tasks

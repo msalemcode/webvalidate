@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-    <RootNamespace>unit_tests</RootNamespace>
+    <RootNamespace>CSE.WebValidate.Tests.EndToEnd</RootNamespace>
 
     <IsPackable>false</IsPackable>
   </PropertyGroup>

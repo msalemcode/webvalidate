@@ -1,10 +1,10 @@
-﻿using System;
+﻿using CSE.WebValidate.Model;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
-using WebValidation.Model;
 
 
-namespace WebValidation.Parameters
+namespace CSE.WebValidate.Parameters
 {
     public static class Validator
     {
