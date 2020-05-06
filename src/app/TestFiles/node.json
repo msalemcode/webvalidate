@@ -1,4 +1,4 @@
 [
-  {"path":"/","perfTarget":{"category":"static"},"validation":{"contentType":"text/html", "contains": [ "<title>Swagger UI</title>", "<div id=\"swagger-ui\">" ]}},
-  {"Path":"/swagger/swagger.json","PerfTarget":{"Category": "static"},"Validation":{"JsonObject":[{"Field":"openapi","Value":null},{"Field":"info","Value":null},{"Field":"paths","Value":null},{"Field":"components","Value":null}]}},
+  {"path":"/","perfTarget":{"category":"static"},"validation":{"contentType":"text/html","contains":["<title>Swagger UI</title>","<div id=\"swagger-ui\">"]}},
+  {"path":"/swagger/swagger.json","perfTarget":{"Category":"static"},"validation":{"JsonObject":[{"field":"openapi"},{"field":"info"},{"field":"paths"},{"field":"components"}]}},
 ]
