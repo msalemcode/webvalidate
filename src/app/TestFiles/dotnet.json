@@ -1,4 +1,4 @@
 [
   {"path":"/","perfTarget":{"category":"static"},"validation":{"contentType":"text/html","contains":["<title>Swagger UI</title>","<div id=\"swagger-ui\">"]}},
-  {"path":"/swagger.json","perfTarget":{"category":"static"},"validation":{"jsonObject":[{"field":"openapi"},{"field":"info"},{"field":"paths"},{"field":"components"}]}},
+  {"path":"/swagger/helium.json","perfTarget":{"category":"static"},"validation":{"jsonObject":[{"field":"openapi"},{"field":"info"},{"field":"paths"},{"field":"components"}]}},
 ]
