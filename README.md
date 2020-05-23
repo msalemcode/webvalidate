@@ -14,6 +14,9 @@ Run a sample validation test against `microsoft.com`
 # run the tests from Docker
 docker run -it --rm retaildevcrew/webvalidate --server https://www.microsoft.com --files msft.json
 
+# run the tests from Docker using the latest version of WebV
+docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
+
 ```
 
 Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
@@ -21,13 +24,7 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 ```bash
 
 # baseline tests
-docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files baseline.json
-
-# dotnet specific tests
-docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files dotnet.json
-
-# long running benchmark test
-docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files benchmark.json
+docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files helium.json
 
 ```
 
@@ -48,8 +45,8 @@ Use your own test files
 # this will start bash so you can verify the mount worked correctly
 docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
 
-# run a test against a local web server running on port 8080 using ~/webv/foo.json
-docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files foo.json
+# run a test against a local web server running on port 8080 using ~/webv/myTest.json
+docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files myTest.json
 
 ```
 
@@ -79,6 +76,7 @@ Web Validate works in two distinct modes. The default mode processes the input f
   - default 0
 - --max-errors int
   - end test after max-errors
+  - if --max-errors is exceeded, WebV will exit with non-zero exit code
 - -t --timeout int
   - HTTP request timeout in seconds
   - default 30 sec
@@ -94,7 +92,7 @@ Web Validate works in two distinct modes. The default mode processes the input f
   - number of milliseconds to sleep between requests
   - default 1000
 - --duration int
-  - run text for duration seconds then exit
+  - run test for duration seconds then exit
   - default run until OS signal
 - --max-concurrent int
   - max concurrent requests
@@ -132,6 +130,18 @@ Web Validate works in two distinct modes. The default mode processes the input f
 - TELEMETRY_NAME=string
 - TELEMETRY_KEY=string
 
+## Running as part of an CI-CD pipeline
+
+WebV will return a non-zero exit code (fail) under the following conditions
+
+- Error parsing the test files
+- If an exception is thrown during a test
+- StatusCode validation fails
+- ContentType validation fails
+- --max-errors is exceeded
+  - To cause the test to fail on any validation error, set --max-errors 0 (default is 10)
+- Any validation error on a test that has FailOnValidationError set to true
+
 ## Validation Files
 
 Validation files are located in the /app/TestFiles directory and are json files that control the validation tests.
@@ -139,8 +149,6 @@ Validation files are located in the /app/TestFiles directory and are json files 
 You can mount a local volume into the Docker container at /app/TestFiles to test your files against your server if you don't want to rebuild the container
 
 - HTTP redirects are not followed
-- The test files must parse and validate or no tests will be executed
-  - only display the first 10 validation errors
 - All string comparisons are case sensitive
 
 - Path (required)
@@ -149,14 +157,19 @@ You can mount a local volume into the Docker container at /app/TestFiles to test
 - Verb
   - default: GET
   - valid: HTTP verbs
+- FailOnValidationError (optional)
+  - If true, any validation error will cause that test to fail
+  - default: false
 - Validation (optional)
   - if not specified in test file, no validation checks will run
   - StatusCode
     - http status code
+    - a validation error will cause the test to fail and return a non-zero error code
     - default: 200
     - valid: 100-599
   - ContentType
-    - MIME type
+    - http Content-Type header
+    - a validation error will cause the test to fail and return a non-zero error code
     - default: application/json
     - valid: null or non-empty string
   - Length

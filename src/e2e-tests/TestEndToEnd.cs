@@ -11,32 +11,35 @@ namespace CSE.WebValidate.Tests.EndToEnd
             {
                 Server = "https://" + server + ".azurewebsites.net"
             };
-            cfg.Timeout = 30;
+            cfg.Timeout = 10;
             cfg.MaxConcurrentRequests = 100;
             cfg.MaxErrors = 10;
 
-            cfg.FileList.Add("dotnet.json");
             cfg.FileList.Add("baseline.json");
-            cfg.FileList.Add("bad.json");
+
+            // TODO - temporarily remove as we change bluebell and sherbert
+//            cfg.FileList.Add("bad.json");
 
             return cfg;
         }
 
-        [Fact]
-        public async Task FroyoTest()
-        {
-            using Config cfg = BuildConfig("froyo");
+        // TODO - uncomment once gelato is reliable
 
-            // load and validate all of our test files
-            using var wv = new WebV(cfg);
-            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
-        }
+        //[Fact]
+        //public async Task GelatoTest()
+        //{
+        //    using Config cfg = BuildConfig("gelato");
+
+        //    // load and validate all of our test files
+
+        //    using var wv = new WebV(cfg);
+        //    Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
+        //}
 
         [Fact]
         public async Task SherbertTest()
         {
             using Config cfg = BuildConfig("sherbert");
-            cfg.FileList.RemoveAt(0);
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);

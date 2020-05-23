@@ -1,9 +1,0 @@
-[
-  { "path": "/api/body",     "perfTarget": { "category": "froyo" }, "verb": "POST", "body": "this is a test", "validation": { "contentType": "text/plain", "exactMatch": "this is a test" } },
-  { "path": "/api/headers",  "perfTarget": { "category": "froyo" }, "headers": { "header1": "value 1", "header2": "value 2" }, "validation": { "jsonObject": [ { "field":"header1", "value": "value 1" }, { "field":"header2", "value": "value 2" } ] } },
-  { "path": "/healthx",      "perfTarget": { "category": "froyo" }, "validation": { "contentType": "text/plain", "notContains": [ "fail" ] } },
-  { "path": "/healthx/pass", "perfTarget": { "category": "froyo" }, "validation": { "contentType": "text/plain", "exactMatch": "pass" } },
-  { "path": "/healthx/warn", "perfTarget": { "category": "froyo" }, "validation": { "contentType": "text/plain", "exactMatch": "warn" } },
-  { "path": "/healthx/fail", "perfTarget": { "category": "froyo" }, "validation": { "contentType": "text/plain", "exactMatch": "fail", statusCode: 503 } },
-  { "path": "/healthx/bad",  "perfTarget": { "category": "froyo" }, "validation": { "contentType": "text/plain", "exactMatch": "Not found", statusCode: 404 } },
-]

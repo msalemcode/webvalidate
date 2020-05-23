@@ -24,6 +24,7 @@ namespace CSE.WebValidate.Response
             if (response == null)
             {
                 result.ValidationErrors.Add("validate: null http response message");
+                result.Failed = true;
                 return result;
             }
 
@@ -42,7 +43,7 @@ namespace CSE.WebValidate.Response
                 return result;
             }
 
-            // handle framework errors
+            // handle framework 4xx status codes
             if (response.Content?.Headers?.ContentType == null)
             {
                 return result;
@@ -66,6 +67,15 @@ namespace CSE.WebValidate.Response
             // run validation rules
             result.Add(ValidateLength((long)response.Content.Headers.ContentLength, r.Validation));
             result.Add(Validate(r.Validation, body));
+
+            // check FailOnValidationError
+            if (r.FailOnValidationError)
+            {
+                if (result.ValidationErrors.Count > 0)
+                {
+                    result.Failed = true;
+                }
+            }
 
             return result;
         }
@@ -324,6 +334,7 @@ namespace CSE.WebValidate.Response
 
             if (actual != expected)
             {
+                result.Failed = true;
                 result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tStatusCode: {actual} Expected: {expected}"));
             }
 
@@ -339,6 +350,7 @@ namespace CSE.WebValidate.Response
             {
                 if (actual != null && !actual.StartsWith(expected, StringComparison.OrdinalIgnoreCase))
                 {
+                    result.Failed = true;
                     result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContentType: {actual} Expected: {expected}"));
                 }
             }

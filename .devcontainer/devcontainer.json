@@ -1,0 +1,15 @@
+{
+  "name": "web-validate",
+
+  // Install extensions
+  "extensions": [
+    "ms-dotnettools.csharp",
+    "ms-azuretools.vscode-docker",
+    "eamodio.gitlens",
+    "davidanson.vscode-markdownlint",
+    "gruntfuggly.todo-tree"
+  ],
+
+  // Run Bash script in .devcontainer directory
+  "postCreateCommand": "dotnet restore ./src/e2e-tests.sln && dotnet restore ./src/unit-tests.sln"
+}

@@ -94,6 +94,11 @@ namespace CSE.WebValidate
 
                     pl = await ExecuteRequest(r).ConfigureAwait(false);
 
+                    if (pl.Failed)
+                    {
+                        errorCount++;
+                    }
+
                     if (!pl.Validated)
                     {
                         validationFailureCount++;
@@ -124,18 +129,26 @@ namespace CSE.WebValidate
                 }
             }
 
-            // display error count
-            if (errorCount > 0)
-            {
-                Console.WriteLine($"Errors: {errorCount}");
-            }
-
             // display validation failure count
             if (validationFailureCount > 0)
             {
                 Console.WriteLine($"Validation Errors: {validationFailureCount}");
             }
 
+            // display error count
+            if (errorCount > 0)
+            {
+                Console.WriteLine($"Failed: {errorCount} Errors");
+            }
+
+            // fail if MaxErrors exceeded
+            else if (validationFailureCount > config.MaxErrors)
+            {
+                Console.Write($"Failed: Validation Errors({validationFailureCount}) exceeded MaxErrors ({config.MaxErrors})");
+                errorCount += validationFailureCount;
+            }
+
+            // return non-zero exit code on failure
             return errorCount;
         }
 
@@ -429,11 +442,12 @@ namespace CSE.WebValidate
             {
                 StatusCode = statusCode,
                 Category = request?.PerfTarget?.Category ?? string.Empty,
-                Validated = !validationResult.Failed,
-                ValidationResults = string.Join('\n', validationResult.ValidationErrors),
+                Validated = !validationResult.Failed && validationResult.ValidationErrors.Count == 0,
+                ValidationResults = string.Join('\t', validationResult.ValidationErrors),
                 Duration = duration,
                 ContentLength = contentLength,
-                PerfLevel = 0
+                PerfLevel = 0,
+                Failed = validationResult.Failed
             };
 
             // determine the Performance Level based on category
@@ -488,11 +502,16 @@ namespace CSE.WebValidate
             }
 
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
-            if ((config.Verbose) || perfLog.StatusCode > 399 || valid.Failed)
+            if ((config.Verbose) || perfLog.StatusCode > 399 || valid.Failed || valid.ValidationErrors.Count > 0)
             {
                 string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
 
                 if (valid.Failed)
+                {
+                    log += "\tFAILED";
+                }
+
+                if (valid.ValidationErrors.Count > 0)
                 {
                     log += "\t" + string.Join('\t', valid.ValidationErrors);
                 }

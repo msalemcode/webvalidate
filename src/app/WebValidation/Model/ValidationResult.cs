@@ -4,7 +4,7 @@ namespace CSE.WebValidate.Model
 {
     public class ValidationResult
     {
-        public bool Failed => ValidationErrors.Count > 0;
+        public bool Failed { get; set; } = false;
 
         public List<string> ValidationErrors { get; } = new List<string>();
 
@@ -15,6 +15,11 @@ namespace CSE.WebValidate.Model
                 if (result.ValidationErrors != null && result.ValidationErrors.Count > 0)
                 {
                     ValidationErrors.AddRange(result.ValidationErrors);
+                }
+
+                if (result.Failed)
+                {
+                    Failed = true;
                 }
             }
         }

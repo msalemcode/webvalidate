@@ -129,13 +129,13 @@ namespace CSE.WebValidate
             Option serverOption = new Option(new string[] { "-s", "--server" }, "Server to test") { Argument = new Argument<string>(), Required = true };
             serverOption.AddValidator(v =>
             {
-                const string errorMessage = "--server must be 3 - 24 characters [a-z][0-9]";
+                const string errorMessage = "--server must be 3 - 100 characters [a-z][0-9]";
 
                 if (v.Tokens == null ||
                 v.Tokens.Count != 1 ||
                 v.Tokens[0].Value == null ||
                 v.Tokens[0].Value.Length < 3 ||
-                v.Tokens[0].Value.Length > 24)
+                v.Tokens[0].Value.Length > 100)
                 {
                     return errorMessage;
                 }

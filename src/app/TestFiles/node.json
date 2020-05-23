@@ -1,4 +1,0 @@
-[
-  {"path":"/","perfTarget":{"category":"static"},"validation":{"contentType":"text/html","contains":["<title>Swagger UI</title>","<div id=\"swagger-ui\">"]}},
-  {"path":"/swagger/swagger.json","perfTarget":{"Category":"static"},"validation":{"JsonObject":[{"field":"openapi"},{"field":"info"},{"field":"paths"},{"field":"components"}]}},
-]

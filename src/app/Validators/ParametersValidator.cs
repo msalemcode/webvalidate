@@ -19,6 +19,7 @@ namespace CSE.WebValidate.Parameters
 
             if (r == null)
             {
+                result.Failed = true;
                 result.ValidationErrors.Add("request is null");
                 return result;
             }
@@ -53,18 +54,21 @@ namespace CSE.WebValidate.Parameters
             // validate http status code
             if (v.StatusCode < 100 || v.StatusCode > 599)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("statusCode: invalid status code: " + v.StatusCode.ToString(CultureInfo.InvariantCulture));
             }
 
             // validate ContentType
             if (v.ContentType != null && v.ContentType.Length == 0)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("contentType: ContentType cannot be empty");
             }
 
             // validate ExactMatch
             if (v.ExactMatch != null && v.ExactMatch.Length == 0)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("exactMatch: exactMatch cannot be empty string");
             }
 
@@ -74,6 +78,7 @@ namespace CSE.WebValidate.Parameters
             // validate MaxMilliSeconds
             if (v.MaxMilliseconds != null && v.MaxMilliseconds <= 0)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("maxMilliseconds: maxMilliseconds cannot be less than zero");
             }
 
@@ -110,12 +115,14 @@ namespace CSE.WebValidate.Parameters
             // validate Category
             if (string.IsNullOrWhiteSpace(target.Category))
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("category: category cannot be empty");
             }
 
             //validate Targets
             if (target.Quartiles == null || target.Quartiles.Count != 3)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("quartiles: quartiles must have 3 values");
             }
 
@@ -144,18 +151,21 @@ namespace CSE.WebValidate.Parameters
                 (a.MinCount != null && a.MinCount < 0) ||
                 (a.MaxCount != null && a.MaxCount < 0))
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("jsonArray: count parameters must be >= 0");
             }
 
             // can't combine Count with MinCount or MaxCount
             if (a.Count != null && (a.MinCount != null || a.MaxCount != null))
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("jsonArray: cannot combine Count with MinCount or MaxCount");
             }
 
             // MaxCount must be > MinCount
             if (a.MinCount != null && a.MaxCount != null && a.MinCount >= a.MaxCount)
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("jsonArray: MaxCount must be > MinCount");
             }
 
@@ -188,6 +198,7 @@ namespace CSE.WebValidate.Parameters
             {
                 if (string.IsNullOrWhiteSpace(f.Field))
                 {
+                    res.Failed = true;
                     res.ValidationErrors.Add("field: field cannot be empty");
                 }
 
@@ -218,12 +229,14 @@ namespace CSE.WebValidate.Parameters
                 // validate index
                 if ((f.Index) < 0)
                 {
+                    res.Failed = true;
                     res.ValidationErrors.Add("index: index cannot be less than 0");
                 }
 
                 // validate field, value, validation
                 if (f.Field == null && f.Value == null && f.Validation == null)
                 {
+                    res.Failed = true;
                     res.ValidationErrors.Add("field: all fields cannot be null");
                 }
 
@@ -363,11 +376,13 @@ namespace CSE.WebValidate.Parameters
             // path is required
             if (string.IsNullOrWhiteSpace(path))
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("path: path is required");
             }
             // path must begin with /
             else if (!path.StartsWith("/", StringComparison.OrdinalIgnoreCase))
             {
+                res.Failed = true;
                 res.ValidationErrors.Add("path: path must begin with /");
             }
 
@@ -394,6 +409,7 @@ namespace CSE.WebValidate.Parameters
             {
                 if (string.IsNullOrEmpty(c))
                 {
+                    res.Failed = true;
                     res.ValidationErrors.Add("notContains: values cannot be empty");
                 }
             }

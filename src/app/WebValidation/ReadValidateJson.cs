@@ -51,7 +51,7 @@ namespace CSE.WebValidate
         /// Load performance targets from json
         /// </summary>
         /// <returns>Dictionary of PerfTarget</returns>
-        private Dictionary<string, PerfTarget> LoadPerfTargets()
+        private static Dictionary<string, PerfTarget> LoadPerfTargets()
         {
             const string perfFileName = "TestFiles/perfTargets.json";
 
