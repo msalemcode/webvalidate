@@ -43,7 +43,7 @@ namespace CSE.WebValidate.Tests.EndToEnd
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
-            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
+            Assert.Equal(0, await wv.RunOnce(cfg, new System.Threading.CancellationToken()).ConfigureAwait(false));
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace CSE.WebValidate.Tests.EndToEnd
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
-            Assert.Equal(0, await wv.RunOnce(cfg).ConfigureAwait(false));
+            Assert.Equal(0, await wv.RunOnce(cfg, new System.Threading.CancellationToken()).ConfigureAwait(false));
         }
     }
 }

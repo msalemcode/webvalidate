@@ -59,7 +59,7 @@ namespace CSE.WebValidate.Tests.Unit
             Assert.Null(wv.ReadJson("foo"));
 
             // test with null config
-            Assert.NotEqual(0, await wv.RunOnce(null).ConfigureAwait(false));
+            Assert.NotEqual(0, await wv.RunOnce(null, new System.Threading.CancellationToken()).ConfigureAwait(false));
 
             cfg.Dispose();
         }

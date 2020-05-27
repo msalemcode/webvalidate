@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace CSE.WebValidate
 {
-    public sealed class App : IDisposable
+    public sealed class App
     {
         // public properties
         public static CancellationTokenSource TokenSource { get; set; } = new CancellationTokenSource();
@@ -394,7 +394,7 @@ namespace CSE.WebValidate
             else
             {
                 // run one iteration
-                return await webv.RunOnce(config).ConfigureAwait(false);
+                return await webv.RunOnce(config, TokenSource.Token).ConfigureAwait(false);
             }
         }
 
@@ -409,12 +409,6 @@ namespace CSE.WebValidate
                 TokenSource.Cancel();
 
                 Console.WriteLine(Constants.ControlCMessage);
-
-                // give tasks a chance to shutdown
-                Task.Delay(500).Wait();
-
-                // end the app
-                Environment.Exit(0);
             };
         }
 
@@ -426,38 +420,6 @@ namespace CSE.WebValidate
         public static bool CheckFileExists(string name)
         {
             return !string.IsNullOrWhiteSpace(name) && System.IO.File.Exists("TestFiles/" + name.Trim());
-        }
-
-        // IDispose implementation
-        private bool disposedValue = false;
-
-        /// <summary>
-        /// Private Dispose
-        /// </summary>
-        /// <param name="disposing">bool</param>
-        void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    //if (Config != null)
-                    //{
-                    //    Config.Dispose();
-                    //}
-                }
-
-                disposedValue = true;
-            }
-        }
-
-        /// <summary>
-        /// IDispose::Dispose
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
     }
 }

@@ -71,7 +71,7 @@ namespace CSE.WebValidate
         /// Run the validation test one time
         /// </summary>
         /// <returns>bool</returns>
-        public async Task<int> RunOnce(Config config)
+        public async Task<int> RunOnce(Config config, CancellationToken token)
         {
             if (config == null)
             {
@@ -90,6 +90,11 @@ namespace CSE.WebValidate
             {
                 try
                 {
+                    if (token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
                     dt = DateTime.UtcNow;
 
                     pl = await ExecuteRequest(r).ConfigureAwait(false);
@@ -117,9 +122,14 @@ namespace CSE.WebValidate
 
                         if (duration > 0)
                         {
-                            await Task.Delay(duration).ConfigureAwait(false);
+                            await Task.Delay(duration, token).ConfigureAwait(false);
                         }
                     }
+                }
+                catch (OperationCanceledException oce)
+                {
+                    // safe to ignore
+                    Console.WriteLine(oce.Message);
                 }
                 catch (Exception ex)
                 {
@@ -160,6 +170,12 @@ namespace CSE.WebValidate
         {
             if (timerState is TimerRequestState state)
             {
+                // exit if cancelled
+                if (state.Token.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 // get count and reset to zero
                 long count = Interlocked.Exchange(ref state.Count, 0);
 
@@ -177,18 +193,24 @@ namespace CSE.WebValidate
         /// <param name="timerState">TimerState</param>
         private static void SubmitRequestTask(object timerState)
         {
-            // get a semaphore slot - rate limit the requests
-            if (!LoopController.WaitOne(10))
-            {
-                return;
-            }
-
             int index = 0;
 
             // cast to TimerState
             if (!(timerState is TimerRequestState state))
             {
                 Console.WriteLine($"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\tError\tTimerState is null");
+                return;
+            }
+
+            // exit if cancelled
+            if (state.Token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            // get a semaphore slot - rate limit the requests
+            if (!LoopController.WaitOne(10))
+            {
                 return;
             }
 
@@ -305,7 +327,9 @@ namespace CSE.WebValidate
                 Test = this,
 
                 // current hour
-                CurrentLogTime = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day, DateTime.UtcNow.Hour, 0, 0)
+                CurrentLogTime = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, DateTime.UtcNow.Day, DateTime.UtcNow.Hour, 0, 0),
+
+                Token = token
             };
 
             if (config.Random)
@@ -321,39 +345,36 @@ namespace CSE.WebValidate
             DisplayStartupMessage(config);
 
             // start the timers
-            Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
-            Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
+            using Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
+            using Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
 
-            // run the wait loop
-            if (dtMax == DateTime.MaxValue)
+            try
             {
-                Task.Delay(-1).Wait(token);
-            }
-            else
-            {
-                // wait one hour to keep total milliseconds from overflowing
-                while (dtMax.Subtract(DateTime.UtcNow).TotalHours > 1)
+                // run the wait loop
+                if (dtMax == DateTime.MaxValue)
                 {
-                    Task.Delay(60 * 60 * 1000).Wait(token);
+                    Task.Delay(-1).Wait(token);
                 }
-
-                int delay = (int)dtMax.Subtract(DateTime.UtcNow).TotalMilliseconds;
-
-                if (delay > 0)
+                else
                 {
-                    Task.Delay(delay).Wait(token);
+                    // wait one hour to keep total milliseconds from overflowing
+                    while (dtMax.Subtract(DateTime.UtcNow).TotalHours > 1)
+                    {
+                        Task.Delay(60 * 60 * 1000).Wait(token);
+                    }
+
+                    int delay = (int)dtMax.Subtract(DateTime.UtcNow).TotalMilliseconds;
+
+                    if (delay > 0)
+                    {
+                        Task.Delay(delay).Wait(token);
+                    }
                 }
             }
-
-            // end and dispose of the timer
-            if (timer != null)
+            catch (OperationCanceledException ex)
             {
-                timer.Dispose();
-            }
-
-            if (logTimer != null)
-            {
-                logTimer.Dispose();
+                // safe to ignore
+                Console.WriteLine(ex.Message);
             }
 
             // graceful exit

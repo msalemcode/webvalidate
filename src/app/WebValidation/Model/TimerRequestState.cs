@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace CSE.WebValidate
 {
@@ -14,5 +15,6 @@ namespace CSE.WebValidate
         public object Lock = new object();
         public WebV Test;
         public DateTime CurrentLogTime;
+        public CancellationToken Token;
     }
 }
