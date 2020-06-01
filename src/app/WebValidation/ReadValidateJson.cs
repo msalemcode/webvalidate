@@ -23,7 +23,7 @@ namespace CSE.WebValidate
             {
                 if (inputFile.IndexOf('/', StringComparison.OrdinalIgnoreCase) < 0 && inputFile.IndexOf('\\', StringComparison.OrdinalIgnoreCase) < 0)
                 {
-                    list = ReadJson("TestFiles/" + inputFile);
+                    list = ReadJson(Constants.TestFilePath + inputFile);
                 }
                 else
                 {
@@ -53,7 +53,7 @@ namespace CSE.WebValidate
         /// <returns>Dictionary of PerfTarget</returns>
         private static Dictionary<string, PerfTarget> LoadPerfTargets()
         {
-            const string perfFileName = "TestFiles/perfTargets.json";
+            const string perfFileName = Constants.TestFilePath + "perfTargets.json";
 
             if (File.Exists(perfFileName))
             {

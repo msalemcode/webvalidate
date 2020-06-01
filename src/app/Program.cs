@@ -419,7 +419,7 @@ namespace CSE.WebValidate
         /// <returns>bool</returns>
         public static bool CheckFileExists(string name)
         {
-            return !string.IsNullOrWhiteSpace(name) && System.IO.File.Exists("TestFiles/" + name.Trim());
+            return !string.IsNullOrWhiteSpace(name) && System.IO.File.Exists(Constants.TestFilePath + name.Trim());
         }
     }
 }

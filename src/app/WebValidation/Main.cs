@@ -80,7 +80,6 @@ namespace CSE.WebValidate
             }
 
             int duration;
-            DateTime dt;
             PerfLog pl;
             int errorCount = 0;
             int validationFailureCount = 0;
@@ -95,8 +94,13 @@ namespace CSE.WebValidate
                         break;
                     }
 
-                    dt = DateTime.UtcNow;
+                    // stop after MaxErrors errors
+                    if ((errorCount + validationFailureCount) > config.MaxErrors)
+                    {
+                        break;
+                    }
 
+                    // execute the request
                     pl = await ExecuteRequest(r).ConfigureAwait(false);
 
                     if (pl.Failed)
@@ -107,12 +111,6 @@ namespace CSE.WebValidate
                     if (!pl.Validated)
                     {
                         validationFailureCount++;
-
-                        // stop after MaxErrors errors
-                        if ((errorCount + validationFailureCount) > config.MaxErrors)
-                        {
-                            break;
-                        }
                     }
 
                     // sleep if configured
@@ -125,11 +123,6 @@ namespace CSE.WebValidate
                             await Task.Delay(duration, token).ConfigureAwait(false);
                         }
                     }
-                }
-                catch (OperationCanceledException oce)
-                {
-                    // safe to ignore
-                    Console.WriteLine(oce.Message);
                 }
                 catch (Exception ex)
                 {
@@ -273,13 +266,13 @@ namespace CSE.WebValidate
             {
                 foreach (string f in config.FileList)
                 {
-                    msg += f.Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase) + " ";
+                    msg += f.Replace(Constants.TestFilePath, string.Empty, StringComparison.OrdinalIgnoreCase) + " ";
                 }
                 msg = msg.Trim() + "\n\t\t";
             }
             else
             {
-                msg += config.FileList[0].Replace("TestFiles/", string.Empty, StringComparison.OrdinalIgnoreCase);
+                msg += config.FileList[0].Replace(Constants.TestFilePath, string.Empty, StringComparison.OrdinalIgnoreCase);
             }
 
             msg += "\n\t\tSleep: " + config.SleepMs.ToString(CultureInfo.InvariantCulture);

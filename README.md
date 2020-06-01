@@ -12,7 +12,7 @@ Run a sample validation test against `microsoft.com`
 ```bash
 
 # run the tests from Docker
-docker run -it --rm retaildevcrew/webvalidate --server https://www.microsoft.com --files msft.json
+docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
 
 # run the tests from Docker using the latest version of WebV
 docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
@@ -24,7 +24,7 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 ```bash
 
 # baseline tests
-docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files helium.json
+docker run -it --rm retaildevcrew/webvalidate:beta --server https://froyo.azurewebsites.net --files helium.json
 
 ```
 
@@ -33,7 +33,7 @@ Experiment with WebV
 ```bash
 
 # get help
-docker run -it --rm retaildevcrew/webvalidate --help
+docker run -it --rm retaildevcrew/webvalidate:beta --help
 
 ```
 
@@ -43,10 +43,10 @@ Use your own test files
 
 # assuming you want to mount ~/webv to the containers /app/TestFiles
 # this will start bash so you can verify the mount worked correctly
-docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
+docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate:beta
 
 # run a test against a local web server running on port 8080 using ~/webv/myTest.json
-docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files myTest.json
+docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate:beta --server localhost:8080 --files myTest.json
 
 ```
 

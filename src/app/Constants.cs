@@ -20,9 +20,8 @@ namespace CSE.WebValidate
 
         public const string ControlCMessage = "Ctl-C Pressed - Starting shutdown ...";
 
-        public const string DefaultTestFile = "TestFiles/baseline.json";
         public const string TestFilePath = "TestFiles/";
-
+        public const string DefaultTestFile = TestFilePath + "baseline.json";
     }
 
     /// <summary>
