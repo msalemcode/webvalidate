@@ -24,4 +24,10 @@
   <ItemGroup>
     <ProjectReference Include="..\app\webvalidate.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="baseline.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

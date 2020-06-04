@@ -262,17 +262,9 @@ namespace CSE.WebValidate
             string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {CSE.WebValidate.Version.AssemblyVersion}\n\t\tHost: {config.Server}\n\t\t");
 
             msg += "Files: ";
-            if (config.FileList.Count > 1)
+            if (config.FileList.Count > 0)
             {
-                foreach (string f in config.FileList)
-                {
-                    msg += f.Replace(Constants.TestFilePath, string.Empty, StringComparison.OrdinalIgnoreCase) + " ";
-                }
-                msg = msg.Trim() + "\n\t\t";
-            }
-            else
-            {
-                msg += config.FileList[0].Replace(Constants.TestFilePath, string.Empty, StringComparison.OrdinalIgnoreCase);
+                msg += string.Join(' ', config.FileList) + "\n\t\t";
             }
 
             msg += "\n\t\tSleep: " + config.SleepMs.ToString(CultureInfo.InvariantCulture);

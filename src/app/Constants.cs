@@ -19,9 +19,6 @@ namespace CSE.WebValidate
         public const string RunLoopMessage = "Must specify --runloop to use --{0}\n";
 
         public const string ControlCMessage = "Ctl-C Pressed - Starting shutdown ...";
-
-        public const string TestFilePath = "TestFiles/";
-        public const string DefaultTestFile = TestFilePath + "baseline.json";
     }
 
     /// <summary>

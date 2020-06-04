@@ -31,4 +31,10 @@
     <ProjectReference Include="..\app\webvalidate.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="msft.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

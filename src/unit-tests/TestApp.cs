@@ -35,18 +35,7 @@ namespace CSE.WebValidate.Tests.Unit
                 MaxConcurrentRequests = 100
             };
 
-            cfg.FileList.Add("actorById.json");
-            cfg.FileList.Add("bad.json");
-            cfg.FileList.Add("baseline.json");
-            cfg.FileList.Add("benchmark.json");
-            cfg.FileList.Add("featured.json");
-            cfg.FileList.Add("genres.json");
-            cfg.FileList.Add("movieById.json");
-            cfg.FileList.Add("moviesByActorId.json");
             cfg.FileList.Add("msft.json");
-            cfg.FileList.Add("rating.json");
-            cfg.FileList.Add("search.json");
-            cfg.FileList.Add("year.json");
 
             // load and validate all of our test files
             using var wv = new WebV(cfg);
@@ -56,8 +45,6 @@ namespace CSE.WebValidate.Tests.Unit
 
             // test with null config
             Assert.NotEqual(0, await wv.RunOnce(null, new System.Threading.CancellationToken()).ConfigureAwait(false));
-
-            cfg.Dispose();
         }
 
         [Fact]

@@ -3,16 +3,98 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Docker Image Build](https://github.com/retaildevcrews/webvalidate/workflows/Docker%20Image%20Build/badge.svg)
 
-Web Validate (WebV) is a web request validation tool that we use to run integration tests and long-running smoke tests.
+Web Validate (WebV) is a web request validation tool that we use to run end-to-end tests and long-running smoke tests.
 
 ## WebV Quick Start
+
+WebV is published as a dotnet package and can be installed as a dotnet global tool. WebV can also be run as a docker container from docker hub. If you have dotnet core sdk installed, running as a dotnet global tool is the simplest and fastest way to run WebV.
+
+## Running as a dotnet global tool
+
+Install WebV as a dotnet global tool
+
+```bash
+
+# this allows you to execute WebV from the shell
+dotnet tool install -g webvalidate --version 1.0.7.3
+
+```
+
+Run a sample validation test against `microsoft.com`
+
+```bash
+
+# change to a directory with WebV test files in it
+cd src/app
+
+# run a test
+webv --server https://www.microsoft.com --files msft.json
+
+```
+
+Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
+
+```bash
+
+# baseline tests
+webv --server https://froyo.azurewebsites.net --files helium.json
+
+```
+
+Experiment with WebV
+
+```bash
+
+# get help
+webv --help
+
+```
+
+## Running from source
+
+```bash
+
+# change to the app directory
+cd src/app
+
+
+```
+
+Run a sample validation test against `microsoft.com`
+
+```bash
+
+# run a test
+dotnet run -- --server https://www.microsoft.com --files msft.json
+
+```
+
+Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
+
+```bash
+
+# baseline tests
+dotnet run -- --server https://froyo.azurewebsites.net --files helium.json
+
+```
+
+Experiment with WebV
+
+```bash
+
+# get help
+dotnet run -- --help
+
+```
+
+## Running as a docker container
 
 Run a sample validation test against `microsoft.com`
 
 ```bash
 
 # run the tests from Docker
-docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
+docker run -it --rm retaildevcrew/webvalidate --server https://www.microsoft.com --files msft.json
 
 # run the tests from Docker using the latest version of WebV
 docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
@@ -24,7 +106,7 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 ```bash
 
 # baseline tests
-docker run -it --rm retaildevcrew/webvalidate:beta --server https://froyo.azurewebsites.net --files helium.json
+docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files helium.json
 
 ```
 
@@ -33,7 +115,7 @@ Experiment with WebV
 ```bash
 
 # get help
-docker run -it --rm retaildevcrew/webvalidate:beta --help
+docker run -it --rm retaildevcrew/webvalidate --help
 
 ```
 
@@ -43,10 +125,10 @@ Use your own test files
 
 # assuming you want to mount ~/webv to the containers /app/TestFiles
 # this will start bash so you can verify the mount worked correctly
-docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate:beta
+docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
 
 # run a test against a local web server running on port 8080 using ~/webv/myTest.json
-docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate:beta --server localhost:8080 --files myTest.json
+docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files myTest.json
 
 ```
 
@@ -383,3 +465,39 @@ provided by the bot. You will only need to do this once across all repos using o
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## CI-CD
+
+This repo uses [GitHub Actions](/.github/workflows/dockerCI.yml) for Continuous Integration.
+
+- CI supports pushing to Azure Container Registry or DockerHub
+- The action is setup to execute on a PR or commit to ```master```
+  - The action does not run on commits to branches other than ```master```
+- The action always publishes an image with the ```:beta``` tag
+- If you tag the repo with a version i.e. ```v1.0.8``` the action will also
+  - Tag the image with ```:1.0.8```
+  - Tag the image with ```:latest```
+  - Note that the ```v``` is case sensitive (lower case)
+
+### Pushing to Azure Container Registry
+
+In order to push to ACR, you must create a Service Principal that has push permissions to the ACR and set the following ```secrets``` in your GitHub repo:
+
+- Azure Login Information
+  - TENANT
+  - SERVICE_PRINCIPAL
+  - SERVICE_PRINCIPAL_SECRET
+
+- ACR Information
+  - ACR_REG
+  - ACR_REPO
+  - ACR_IMAGE
+
+### Pushing to DockerHub
+
+In order to push to DockerHub, you must set the following ```secrets``` in your GitHub repo:
+
+- DOCKER_REPO
+- DOCKER_USER
+- DOCKER_PAT
+  - Personal Access Token

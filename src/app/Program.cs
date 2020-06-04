@@ -143,7 +143,7 @@ namespace CSE.WebValidate
                 return string.Empty;
             });
 
-            Option filesOption = new Option(new string[] { "-f", "--files" }, "List of files to test") { Argument = new Argument<List<string>>(() => new List<string> { "baseline.json" }) };
+            Option filesOption = new Option(new string[] { "-f", "--files" }, "List of files to test") { Argument = new Argument<List<string>>(), Required = true };
             filesOption.AddValidator(v =>
             {
                 string ret = string.Empty;
@@ -419,7 +419,7 @@ namespace CSE.WebValidate
         /// <returns>bool</returns>
         public static bool CheckFileExists(string name)
         {
-            return !string.IsNullOrWhiteSpace(name) && System.IO.File.Exists(Constants.TestFilePath + name.Trim());
+            return !string.IsNullOrWhiteSpace(name) && System.IO.File.Exists(name.Trim());
         }
     }
 }

@@ -34,10 +34,15 @@ RUN addgroup -S webv && \
     mkdir -p /home/webv && \
     chown -R webv:webv /home/webv
 
+WORKDIR /app
+COPY --from=build /app .
+RUN mkdir -p /app/TestFiles && \
+    cp *.json TestFiles && \
+    cp perfTargets.txt TestFiles
+
+WORKDIR /app/TestFiles
+
 # run as the webv user
 USER webv
 
-WORKDIR /app
-COPY --from=build /app .
-
-ENTRYPOINT [ "dotnet",  "webvalidate.dll" ]
+ENTRYPOINT [ "dotnet",  "../webvalidate.dll" ]
