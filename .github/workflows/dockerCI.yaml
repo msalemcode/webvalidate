@@ -22,35 +22,53 @@ jobs:
 
     runs-on: ubuntu-latest
     env:
-      # Docker repo information
-      # set these secrets to push to docker hub
+      # copy the config value to environment variables
+      # do not copy the actual secrets!
+
       DOCKER_REPO: ${{ secrets.DOCKER_REPO }}
-      DOCKER_USER: ${{ secrets.DOCKER_USER }}
-      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
-
-      # Set these secrets to push to Azure Container Registry
-      # Azure login information
-      TENANT: ${{ secrets.TENANT }}
-      SERVICE_PRINCIPAL: ${{ secrets.SERVICE_PRINCIPAL }}
-      SERVICE_PRINCIPAL_SECRET: ${{ secrets.SERVICE_PRINCIPAL_SECRET }}
-
-      # ACR repo information
-      ACR_REG: ${{ secrets.ACR_REG }}
       ACR_REPO: ${{ secrets.ACR_REPO }}
       ACR_IMAGE: ${{ secrets.ACR_IMAGE }}
+      ACR_REG: ${{ secrets.ACR_REG }}
 
+      # These are used in if: conditions
       AZURE_SET: false
       DOCKER_SET: false
       ACR_SET: false
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
 
     - name: Set conditions
       run: |
-        echo "::set-env name=AZURE_SET::${{ env.SERVICE_PRINCIPAL_SECRET != '' && env.TENANT != '' && env.SERVICE_PRINCIPAL != '' && env.KEYVAULT_NAME != '' }}"
-        echo "::set-env name=DOCKER_SET::${{ env.DOCKER_PAT != '' && env.DOCKER_REPO != '' && env.DOCKER_USER != '' }}"
-        echo "::set-env name=ACR_SET::${{ env.ACR_REG != '' && env.ACR_REPO != '' && env.ACR_IMAGE !='' }}"
+        # check that all Azure secrets are set
+        if [[ "${{ secrets.SERVICE_PRINCIPAL_SECRET }}" != "" && "${{ secrets.TENANT }}" != "" && "${{ secrets.SERVICE_PRINCIPAL }}" != "" ]];
+        then
+          echo "::set-env name=AZURE_SET::true"
+        fi
+
+        # check that all Docker secrets are set
+        if [[ "${{ secrets.DOCKER_PAT }}" != "" && "${{ secrets.DOCKER_REPO }}" != "" && "${{ secrets.DOCKER_USER }}" != "" ]];
+        then
+          echo "::set-env name=DOCKER_SET::true"
+        fi
+        
+        # check that all ACR secrets are set
+        if [[ "${{ secrets.ACR_REG }}" != "" && "${{ secrets.ACR_REPO }}" != "" && "${{ secrets.ACR_IMAGE }}" != "" ]];
+        then
+          echo "::set-env name=ACR_SET::true"
+        fi
+
+    - name: Azure Login
+      if: ${{ env.AZURE_SET == 'true' }}
+      run: |
+        # login to Azure
+        az login --service-principal -u ${{ secrets.SERVICE_PRINCIPAL }} --tenant ${{ secrets.TENANT }} -p ${{ secrets.SERVICE_PRINCIPAL_SECRET }}
+
+    - name: Docker Login
+      if: ${{ env.DOCKER_SET == 'true' }}
+      run: |
+        # login to dockerhub
+        echo "${{ secrets.DOCKER_PAT }}" | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
 
     - name: Build Container
       run: docker build . -t image
@@ -58,9 +76,6 @@ jobs:
     - name: Docker Push
       if: ${{ env.DOCKER_SET == 'true' }}
       run: |
-        ## login to docker hub
-        echo "${{ secrets.DOCKER_PAT }}" | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
-
         # tag the image with :beta
         docker tag image ${DOCKER_REPO}:beta
 
@@ -85,9 +100,6 @@ jobs:
     - name: ACR Push
       if: ${{ env.ACR_SET == 'true' && env.AZURE_SET == 'true' }}
       run: |
-        # login to Azure
-        az login --service-principal -u ${SERVICE_PRINCIPAL} --tenant ${TENANT} -p ${SERVICE_PRINCIPAL_SECRET}
-
         # login to acr
         az acr login -n ${ACR_REG}
         

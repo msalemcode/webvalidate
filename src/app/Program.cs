@@ -413,7 +413,7 @@ namespace CSE.WebValidate
         }
 
         /// <summary>
-        /// Check to see if the file exists in TestFiles directory
+        /// Check to see if the file exists in the current directory
         /// </summary>
         /// <param name="name">file name</param>
         /// <returns>bool</returns>
