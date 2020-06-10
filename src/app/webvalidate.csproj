@@ -4,12 +4,19 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>CSE.WebValidate</RootNamespace>
-    <Version>1.0.7+$([System.DateTime]::UtcNow.ToString(`MMdd-HHmm`))</Version>
+    <Version>1.1.0+$([System.DateTime]::UtcNow.ToString(`MMdd-HHmm`))</Version>
     <Copyright>Copyright (c) Microsoft Corporation. All rights reserved.</Copyright>
     <RunAnalyzersDuringLiveAnalysis>true</RunAnalyzersDuringLiveAnalysis>
     <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
     <LangVersion>8.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>webv</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>   
+    <RepositoryUrl>https://github.com/retaildevcrews/webvalidate/</RepositoryUrl> 
+    <Description>Web Validate (WebV) is a web request validation tool to run integration tests and long-running smoke tests.</Description>
+    <PackageDescription>Web Validate (WebV) is a web request validation tool to run integration tests and long-running smoke tests. </PackageDescription>
+    <Title>Web Validate</Title>
   </PropertyGroup>
 
   <ItemGroup>

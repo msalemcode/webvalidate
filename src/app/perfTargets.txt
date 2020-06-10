@@ -1,9 +1,6 @@
 {
-  "default":{"Category":"default","Quartiles":[100,200,400]},
-  "DirectRead":{"Category":"DirectRead","Quartiles":[40,80,120]},
-  "healthz":{"Category":"healthz","Quartiles":[400,800,1600]},
-  "PagedRead":{"Category":"PagedRead","Quartiles":[40,80,160]},
-  "SearchActors":{"Category":"SearchActors","Quartiles":[100,200,400]},
-  "SearchMovies":{"Category":"SearchMovies","Quartiles":[100,200,400]},
-  "static":{"Category":"static","Quartiles":[40,80,160]}
+  "Default":{"Category":"Default","Quartiles":[100,200,400]},
+  "HealthCheck":{"Category":"HealthCheck","Quartiles":[400,800,1600]},
+  "API":{"Category":"API","Quartiles":[100,200,400]},
+  "Static":{"Category":"Static","Quartiles":[40,80,160]}
 }

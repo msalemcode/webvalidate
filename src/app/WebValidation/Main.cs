@@ -1,4 +1,4 @@
-﻿using CSE.WebValidate.Model;
+using CSE.WebValidate.Model;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
