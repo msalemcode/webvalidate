@@ -134,3 +134,12 @@ jobs:
 
         # Push to the repo
         docker push ${ACR_IMAGE}
+
+    - name: Pack and Publish
+      run: |
+      
+        if [[ "${{ secrets.NUGET_KEY }}" != "" && "${{ github.ref }}" == "refs/tags/"* ]];
+        then
+          dotnet pack src/webvalidate.sln
+          dotnet nuget push src/app/nupkg/ --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_KEY }}
+        fi

@@ -16,7 +16,7 @@ Install WebV as a dotnet global tool
 ```bash
 
 # this allows you to execute WebV from the shell
-dotnet tool install -g webvalidate --version 1.0.7.3
+dotnet tool install -g webvalidate
 
 ```
 
@@ -36,7 +36,6 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 
 ```bash
 
-# baseline tests
 webv --server https://froyo.azurewebsites.net --files helium.json
 
 ```
@@ -73,7 +72,6 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 
 ```bash
 
-# baseline tests
 dotnet run -- --server https://froyo.azurewebsites.net --files helium.json
 
 ```
@@ -105,7 +103,6 @@ Run more complex tests against ["Helium"](https://github.com/retaildevcrews/heli
 
 ```bash
 
-# baseline tests
 docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files helium.json
 
 ```
@@ -151,8 +148,7 @@ Web Validate works in two distinct modes. The default mode processes the input f
   - required
 - -f --files file1 [file2 file3 ...]
   - one or more json test files
-  - default baseline.json
-  - default location ./TestFiles/
+  - required
 - -l --sleep int
   - number of milliseconds to sleep between requests
   - default 0
@@ -452,20 +448,6 @@ The msft.json file contains sample validation tests that will will successfully 
 
 ```
 
-## Contributing
-
-This project welcomes contributions and suggestions. Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit [Microsoft Contributor License Agreement](https://cla.opensource.microsoft.com).
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
 ## CI-CD
 
 This repo uses [GitHub Actions](/.github/workflows/dockerCI.yml) for Continuous Integration.
@@ -474,8 +456,8 @@ This repo uses [GitHub Actions](/.github/workflows/dockerCI.yml) for Continuous 
 - The action is setup to execute on a PR or commit to ```master```
   - The action does not run on commits to branches other than ```master```
 - The action always publishes an image with the ```:beta``` tag
-- If you tag the repo with a version i.e. ```v1.0.8``` the action will also
-  - Tag the image with ```:1.0.8```
+- If you tag the repo with a version i.e. ```v1.1.0``` the action will also
+  - Tag the image with ```:1.1.0```
   - Tag the image with ```:latest```
   - Note that the ```v``` is case sensitive (lower case)
 
@@ -501,3 +483,17 @@ In order to push to DockerHub, you must set the following ```secrets``` in your 
 - DOCKER_USER
 - DOCKER_PAT
   - Personal Access Token
+
+## Contributing
+
+This project welcomes contributions and suggestions. Most contributions require you to agree to a
+Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
+the rights to use your contribution. For details, visit [Microsoft Contributor License Agreement](https://cla.opensource.microsoft.com).
+
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide
+a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
+provided by the bot. You will only need to do this once across all repos using our CLA.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

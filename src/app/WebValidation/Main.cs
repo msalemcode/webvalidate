@@ -510,7 +510,11 @@ namespace CSE.WebValidate
             // only log 4XX and 5XX status codes unless verbose is true or there were validation errors
             if ((config.Verbose) || perfLog.StatusCode > 399 || valid.Failed || valid.ValidationErrors.Count > 0)
             {
-                string log = string.Format(System.Globalization.CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t{perfLog.StatusCode}\t{perfLog.Duration}\t{perfLog.Category.PadRight(12).Substring(0, 12)}\t{perfLog.PerfLevel}\t{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}");
+                string log = $"{DateTime.UtcNow.ToString("MM/dd hh:mm:ss", CultureInfo.InvariantCulture)}\t";
+                log += $"{perfLog.StatusCode}\t{perfLog.Duration}\t";
+                log += $"{perfLog.Category.PadRight(12).Substring(0, 12)}\t";
+                log += $"{(perfLog.PerfLevel > 0 && perfLog.PerfLevel <= 4 ? perfLog.PerfLevel.ToString(CultureInfo.InvariantCulture) : string.Empty)}\t";
+                log += $"{perfLog.Validated}\t{perfLog.ContentLength}\t{request.Path}";
 
                 if (valid.Failed)
                 {
