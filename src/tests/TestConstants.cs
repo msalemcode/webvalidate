@@ -1,26 +1,7 @@
 ﻿using System.Collections.Generic;
 
-namespace CSE.WebValidate
+namespace CSE.WebValidate.Tests
 {
-    /// <summary>
-    /// Constants used in the app
-    /// </summary>
-    public sealed class Constants
-    {
-        // error messages
-        public const string DurationParameterError = "Invalid duration (seconds) parameter: {0}\n";
-        public const string FileNotFoundError = "File not found: {0}";
-        public const string SleepParameterError = "Invalid sleep (milliseconds) parameter: {0}\n";
-        public const string MaxConcurrentParameterError = "Invalid max concurrent requests parameter: {0}\n";
-        public const string RequestTimeoutParameterError = "Invalid request timeout parameter: {0}\n";
-        public const string HostMissingMessage = "Must specify --host parameter\n";
-        public const string NoFilesFoundMessage = "No files found";
-        public const string TelemetryParameterError = "Invalid telemetry parameter: {0} {1}\n";
-        public const string RunLoopMessage = "Must specify --runloop to use --{0}\n";
-
-        public const string ControlCMessage = "Ctl-C Pressed - Starting shutdown ...";
-    }
-
     /// <summary>
     /// Environment Variable Keys
     /// </summary>

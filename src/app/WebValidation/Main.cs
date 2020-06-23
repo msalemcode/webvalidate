@@ -27,7 +27,7 @@ namespace CSE.WebValidate
         /// <param name="config">Config</param>
         public WebV(Config config)
         {
-            if (config == null || config.FileList == null || string.IsNullOrEmpty(config.Server))
+            if (config == null || config.Files == null || string.IsNullOrEmpty(config.Server))
             {
                 throw new ArgumentNullException(nameof(config));
             }
@@ -38,13 +38,13 @@ namespace CSE.WebValidate
             client = OpenHttpClient(config.Server);
 
             // setup the semaphore
-            LoopController = new Semaphore(this.config.MaxConcurrentRequests, this.config.MaxConcurrentRequests);
+            LoopController = new Semaphore(this.config.MaxConcurrent, this.config.MaxConcurrent);
 
             // load the performance targets
             Targets = LoadPerfTargets();
 
             // load the requests from json files
-            requestList = LoadValidateRequests(config.FileList);
+            requestList = LoadValidateRequests(config.Files);
 
             if (requestList == null || requestList.Count == 0)
             {
@@ -60,11 +60,14 @@ namespace CSE.WebValidate
         /// <returns>HttpClient</returns>
         HttpClient OpenHttpClient(string host)
         {
-            return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+            var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
             {
                 Timeout = new TimeSpan(0, 0, config.Timeout),
                 BaseAddress = new Uri(host)
             };
+            client.DefaultRequestHeaders.Add("User-Agent", "webValidate");
+
+            return client;
         }
 
         /// <summary>
@@ -114,9 +117,9 @@ namespace CSE.WebValidate
                     }
 
                     // sleep if configured
-                    if (config.SleepMs > 0)
+                    if (config.Sleep > 0)
                     {
-                        duration = config.SleepMs - (int)pl.Duration;
+                        duration = config.Sleep - (int)pl.Duration;
 
                         if (duration > 0)
                         {
@@ -259,26 +262,30 @@ namespace CSE.WebValidate
         /// </summary>
         private static void DisplayStartupMessage(Config config)
         {
-            string msg = string.Format(CultureInfo.InvariantCulture, $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test\n\t\tVersion: {CSE.WebValidate.Version.AssemblyVersion}\n\t\tHost: {config.Server}\n\t\t");
+            string msg = $"{DateTime.UtcNow.ToString("MM/dd HH:mm:ss", CultureInfo.InvariantCulture)}\tStarting Web Validation Test";
+            msg += $"\n\t\tVersion: {CSE.WebValidate.Version.AssemblyVersion}";
+            msg += $"\n\t\tHost: {config.Server}";
 
-            msg += "Files: ";
-            if (config.FileList.Count > 0)
+            if (!string.IsNullOrEmpty(config.BaseUrl))
             {
-                msg += string.Join(' ', config.FileList) + "\n\t\t";
+                msg += $"\n\t\tBaseUrl: {config.BaseUrl}";
             }
 
-            msg += "\n\t\tSleep: " + config.SleepMs.ToString(CultureInfo.InvariantCulture);
-            msg += "\n\t\tMaxConcurrent: " + config.MaxConcurrentRequests.ToString(CultureInfo.InvariantCulture);
+            msg += $"\n\t\tFiles: {string.Join(' ', config.Files)}";
+            msg += $"\n\t\tSleep: {config.Sleep}";
+            msg += $"\n\t\tMaxConcurrent: {config.MaxConcurrent}";
+
             if (config.Duration > 0)
             {
-                msg += "\n\t\tDuration: " + config.Duration.ToString(CultureInfo.InvariantCulture);
+                msg += $"\n\t\tDuration: {config.Duration}";
             }
+
             msg += config.Random ? "\n\t\tRandom" : string.Empty;
             msg += config.Verbose ? "\n\t\tVerbose" : string.Empty;
 
-            msg += string.IsNullOrEmpty(config.TelemetryName) ? string.Empty : string.Format(CultureInfo.InvariantCulture, $"\n\t\tTelemetry: {config.TelemetryName} {config.TelemetryKey}");
+            msg += string.IsNullOrEmpty(config.TelemetryName) ? string.Empty : $"\n\t\tTelemetry: {config.TelemetryName} {config.TelemetryKey}";
 
-            Console.WriteLine(msg);
+            Console.WriteLine(msg + "\n");
         }
 
         /// <summary>
@@ -322,15 +329,15 @@ namespace CSE.WebValidate
                 state.Random = new Random(DateTime.UtcNow.Millisecond);
             }
 
-            if (config.SleepMs < 1)
+            if (config.Sleep < 1)
             {
-                config.SleepMs = 1;
+                config.Sleep = 1;
             }
 
             DisplayStartupMessage(config);
 
             // start the timers
-            using Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.SleepMs);
+            using Timer timer = new Timer(new TimerCallback(SubmitRequestTask), state, 0, config.Sleep);
             using Timer logTimer = new Timer(new TimerCallback(SummaryLogTask), state, (int)state.CurrentLogTime.AddHours(1).Subtract(DateTime.UtcNow).TotalMilliseconds, 60 * 60 * 1000);
 
             try

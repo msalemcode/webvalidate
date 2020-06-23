@@ -25,18 +25,27 @@ Run a sample validation test against `microsoft.com`
 ```bash
 
 # change to a directory with WebV test files in it
-cd src/app
+pushd src/app
 
 # run a test
 webv --server https://www.microsoft.com --files msft.json
 
 ```
 
-Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
+Run more complex tests against the GitHub API by using:
 
 ```bash
 
-webv --server https://froyo.azurewebsites.net --files helium.json
+# github tests
+webv -s https://api.github.com -f github.json
+
+```
+
+Run a test that fails validation and causes a non-zero exit code
+
+```bash
+
+webv -s https://www.microsoft.com -f failOnValidationError.json
 
 ```
 
@@ -49,12 +58,20 @@ webv --help
 
 ```
 
+Make sure to change back to the root of the repo
+
+```bash
+
+popd
+
+```
+
 ## Running from source
 
 ```bash
 
 # change to the app directory
-cd src/app
+pushd src/app
 
 
 ```
@@ -68,11 +85,20 @@ dotnet run -- --server https://www.microsoft.com --files msft.json
 
 ```
 
-Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
+Run more complex tests against the GitHub API by using:
 
 ```bash
 
-dotnet run -- --server https://froyo.azurewebsites.net --files helium.json
+# github tests
+dotnet run -- -s https://api.github.com -f github.json
+
+```
+
+Run a test that fails validation and causes a non-zero exit code
+
+```bash
+
+dotnet run -- -s https://www.microsoft.com -f failOnValidationError.json
 
 ```
 
@@ -85,6 +111,14 @@ dotnet run -- --help
 
 ```
 
+Make sure to change back to the root of the repo
+
+```bash
+
+popd
+
+```
+
 ## Running as a docker container
 
 Run a sample validation test against `microsoft.com`
@@ -94,16 +128,22 @@ Run a sample validation test against `microsoft.com`
 # run the tests from Docker
 docker run -it --rm retaildevcrew/webvalidate --server https://www.microsoft.com --files msft.json
 
-# run the tests from Docker using the latest version of WebV
-docker run -it --rm retaildevcrew/webvalidate:beta --server https://www.microsoft.com --files msft.json
-
 ```
 
-Run more complex tests against ["Helium"](https://github.com/retaildevcrews/helium) hosted at [froyo](https://froyo.azurewebsites.net) by using:
+Run more complex tests against the GitHub API by using:
 
 ```bash
 
-docker run -it --rm retaildevcrew/webvalidate --server https://froyo.azurewebsites.net --files helium.json
+# github tests
+docker run -it --rm retaildevcrew/webvalidate -s https://api.github.com -f github.json
+
+```
+
+Run a test that fails validation and causes a non-zero exit code
+
+```bash
+
+docker run -it --rm retaildevcrew/webvalidate -s https://www.microsoft.com -f failOnValidationError.json
 
 ```
 
@@ -120,12 +160,12 @@ Use your own test files
 
 ```bash
 
-# assuming you want to mount ~/webv to the containers /app/TestFiles
+# assuming you want to mount MyTestFiles to the containers /app/TestFiles
 # this will start bash so you can verify the mount worked correctly
-docker run -it --rm -v ~/webv:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
+docker run -it --rm -v MyTestFiles:/app/TestFiles --entrypoint bash retaildevcrew/webvalidate
 
 # run a test against a local web server running on port 8080 using ~/webv/myTest.json
-docker run -it --rm -v ~/webv:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files myTest.json
+docker run -it --rm -v MyTestFiles:/app/TestFiles --net=host  retaildevcrew/webvalidate --server localhost:8080 --files myTest.json
 
 ```
 
@@ -144,11 +184,14 @@ Web Validate works in two distinct modes. The default mode processes the input f
 - -d --dry-run
   - validate parameters but do not execute tests
 - -s --server string
-  - base Url (i.e. `https://www.microsoft.com`)
+  - server Url (i.e. `https://www.microsoft.com`)
   - required
 - -f --files file1 [file2 file3 ...]
   - one or more json test files
-  - required
+  - default location current directory
+- -u --base-url
+  - base URL of test files using http
+    - ex: `https://raw.githubusercontent.com/retaildevcrews/webvalidate/master/TestFiles/`
 - -l --sleep int
   - number of milliseconds to sleep between requests
   - default 0
@@ -164,14 +207,14 @@ Web Validate works in two distinct modes. The default mode processes the input f
 
 ### RunLoop Mode Parameters
 
-- -r --runloop
+- -r --run-loop
   - runs the test in a continuous loop
 - -l --sleep int
   - number of milliseconds to sleep between requests
   - default 1000
 - --duration int
   - run test for duration seconds then exit
-  - default run until OS signal
+  - default 0 (run until OS signal)
 - --max-concurrent int
   - max concurrent requests
   - default 100
@@ -198,13 +241,14 @@ Web Validate works in two distinct modes. The default mode processes the input f
 - TIMEOUT=int
 - VERBOSE=bool
 - MAX_ERRORS=int
+- BASE_URL=string
 
 ### Additional run Loop environment variables
 
-- RUN_LOOP=bool
+- RUN_LOOP=true
 - DURATION=int
 - MAX_CONCURRENT=int
-- RANDOM=bool
+- RANDOM=true
 - TELEMETRY_NAME=string
 - TELEMETRY_KEY=string
 
@@ -243,13 +287,15 @@ You can mount a local volume into the Docker container at /app/TestFiles to test
   - StatusCode
     - http status code
     - a validation error will cause the test to fail and return a non-zero error code
+    - no other validation checks are executed
     - default: 200
     - valid: 100-599
   - ContentType
     - http Content-Type header
     - a validation error will cause the test to fail and return a non-zero error code
+    - no other validation checks are executed
     - default: application/json
-    - valid: null or non-empty string
+    - valid: valid MIME type
   - Length
     - length of content
       - cannot be combined with MinLength or MaxLength
@@ -276,7 +322,7 @@ You can mount a local volume into the Docker container at /app/TestFiles to test
     - Count
       - exact number of items
       - Valid: >= 0
-      - valid: cannot be combined with MinCout or MaxCount
+      - valid: cannot be combined with MinCount or MaxCount
     - MinCount
       - minimum number of items
       - valid: >= 0
@@ -284,17 +330,17 @@ You can mount a local volume into the Docker container at /app/TestFiles to test
     - MaxCount
       - maximum number of items
       - valid: > MinCount
-        - can be comined with MinCount
+        - can be combined with MinCount
     - ForEach[JsonObject]
       - checks each json object in the array
-    - Objects[]
-      - validates object[index]
-      - Index
-        - Index of object to check
-        - valid: >= 0
-      - JsonObject
-        - JsonObject definition to check
-        - valid: JsonObject rules
+      - JsonObject[]
+        - validates object[index]
+        - Index
+          - Index of object to check
+          - valid: >= 0
+        - JsonObject
+          - JsonObject definition to check
+          - valid: JsonObject rules
   - JsonObject[]
     - valid: parses into json object
     - Field
@@ -303,13 +349,20 @@ You can mount a local volume into the Docker container at /app/TestFiles to test
     - Value (optional)
       - if not specified, verifies the Field exists in the json document
       - valid: null, number or string
+    - Validation (optional)
+      - validation object to execute (for json objects within objects)
+      - valid: null or valid json
 - PerfTarget (optional)
   - Category
     - used to group requests into categories for reporting
-    - see [helium](https://github.com/retaildevcrews/helium) examples below
     - valid: non-empty string
   - Targets[3]
     - maximum quartile value in ascending order
+    - example: [ 100, 200, 400 ]
+      - Quartile 1 <= 100 ms
+      - Quartile 2 <= 200 ms
+      - Quartile 3 <= 400 ms
+      - Quartile 4 > 400 ms
 
 ## Sample `microsoft.com` validation tests
 
@@ -383,67 +436,109 @@ The msft.json file contains sample validation tests that will will successfully 
 }
 ```
 
-## Sample [helium](https://github.com/retaildevcrews/helium) tests
+## Sample GitHub tests
+
+Array of Repos
 
 ```json
 
 {
-    "Url":"/version",
-    "Validation":
-    {
-        "Code":200,
-        "ContentType":"text/plain"
-    }
-}
-
-{
-    "Url":"/healthz",
-    "PerfTarget":
-    {
-        "Category":"healthz"
-    },
-    "Validation":
-    {
-        "ContentType":"text/plain",
-        "ExactMatch":
+  "verb": "GET",
+  "path": "/orgs/octokit/repos",
+  "validation": {
+    "contentType": "application/json",
+    "jsonArray": {
+      "count": 30,
+      "forEach": [
         {
-            "Value":"pass"
+          "jsonObject": [
+            { "field": "id" },
+            { "field": "node_id" },
+            { "field": "name" },
+            { "field": "full_name" },
+            { "field": "private" },
+            {
+              "field": "owner",
+              "validation": {
+                "jsonObject": [
+                  { "field": "login" },
+                  { "field": "id" },
+                  { "field": "node_id" },
+                  { "field": "avatar_url" },
+                  { "field": "gravatar_id" },
+                  { "field": "url" },
+                  { "field": "html_url" },
+                  { "field": "followers_url" },
+                  { "field": "following_url" },
+                  { "field": "gists_url" },
+                  { "field": "starred_url" },
+                  { "field": "subscriptions_url" },
+                  { "field": "organizations_url" },
+                  { "field": "repos_url" },
+                  { "field": "events_url" },
+                  { "field": "received_events_url" },
+                  { "field": "type" },
+                  { "field": "site_admin" }
+                ]
+              }
+            }
         }
     }
+  }
 }
 
-{
-    "Url":"/healthz/ietf",
-    "PerfTarget":
-    {
-        "Category":"healthz"
-    },
-    "Validation":
-    {
-        "ContentType":"application/health+json",
-        "JsonObject":
-        [
-          {
-            "Field":"status",
-            "Value":"pass"
-          }
-        ]
-    }
-}
+```
+
+Single Repository Validation
+
+```json
 
 {
-    "Url":"/api/actors",
-    "PerfTarget":
-    {
-        "Category":"PagedRead"
-    },
-    "Validation":
-    {
-        "JsonArray":
-        {
-            "Count":100
+  "verb": "GET",
+  "path": "/repos/octokit/octokit.net",
+  "validation": {
+    "contentType": "application/json",
+    "jsonObject": [
+      {
+        "field": "id",
+        "value": 7528679
+      },
+      {
+        "field": "name",
+        "value": "octokit.net"
+      },
+      {
+        "field": "owner",
+        "validation": {
+          "jsonObject": [
+            {
+              "field": "login",
+              "value": "octokit"
+            },
+            {
+              "field": "id",
+              "value": 3430433
+            },
+            {
+              "field": "url",
+              "value": "https://api.github.com/users/octokit"
+            },
+            {
+              "field": "html_url",
+              "value": "https://github.com/octokit"
+            },
+            {
+              "field": "type",
+              "value": "Organization"
+            }
+          ]
         }
-    }
+      },
+      {
+        "field": "html_url",
+        "value": "https://github.com/octokit/octokit.net"
+      }
+  }
 }
 
 ```
@@ -497,3 +592,4 @@ provided by the bot. You will only need to do this once across all repos using o
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+>>>>>>> 7212fde3e229451cc32c9ca80f28b221177a1b79

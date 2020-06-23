@@ -1,7 +1,20 @@
 #!/bin/sh
 
-date >> ~/status
-echo "post-install.sh ..." >> ~/status
+# run dotnet restore
+dotnet restore src/webvalidate.sln
+
+DEBIAN_FRONTEND=noninteractive
+# update apt-get
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends apt-utils dialog
+
+# add docker bash-completion
+sudo curl https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker -o /etc/bash_completion.d/docker
+
+# install / update utilities
+sudo apt-get install -y --no-install-recommends dnsutils httpie bash-completion curl wget git unzip
+
+DEBIAN_FRONTEND=dialog
 
 # copy vscode files
 mkdir -p .vscode && cp docs/vscode-template/* .vscode
@@ -12,22 +25,3 @@ mkdir -p .vscode && cp docs/vscode-template/* .vscode
 # including keys or secrets could be a SECURITY RISK
 echo "" >> ~/.bashrc
 echo ". ${PWD}/.devcontainer/.bashrc-append" >> ~/.bashrc
-
-date >> ~/status
-echo "Updating Packages ..." >> ~/status
-
-DEBIAN_FRONTEND=noninteractive
-sudo apt-get update
-
-date >> ~/status
-echo "Installing basics ..." >> ~/status
-
-sudo apt-get install -y --no-install-recommends apt-utils dialog
-
-DEBIAN_FRONTEND=dialog
-
-# run dotnet restore
-dotnet restore unit-tests.sln
-
-date >> ~/status
-echo "Done" >> ~/status

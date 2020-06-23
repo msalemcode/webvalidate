@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 
 namespace CSE.WebValidate
 {
@@ -21,14 +22,7 @@ namespace CSE.WebValidate
             // read each json file
             foreach (string inputFile in fileList)
             {
-                if (inputFile.IndexOf('/', StringComparison.OrdinalIgnoreCase) < 0 && inputFile.IndexOf('\\', StringComparison.OrdinalIgnoreCase) < 0)
-                {
-                    list = ReadJson(inputFile);
-                }
-                else
-                {
-                    list = ReadJson(inputFile);
-                }
+                list = ReadJson(inputFile);
 
                 // add contents to full list
                 if (list != null && list.Count > 0)
@@ -71,28 +65,62 @@ namespace CSE.WebValidate
         /// <returns>List of Request</returns>
         public List<Request> ReadJson(string file)
         {
+            string json = string.Empty;
+
             if (string.IsNullOrWhiteSpace(file))
             {
                 throw new ArgumentNullException(nameof(file));
             }
 
-            // check for file exists
-            if (string.IsNullOrEmpty(file) || !File.Exists(file))
+
+            if (string.IsNullOrEmpty(config.BaseUrl))
             {
-                Console.WriteLine($"File Not Found: {file}");
-                return null;
+                // check for file exists
+                if (string.IsNullOrEmpty(file) || !File.Exists(file))
+                {
+                    Console.WriteLine($"File Not Found: {file}");
+                    return null;
+                }
+
+                // read the file
+                json = File.ReadAllText(file);
+
+                // check for empty file
+                if (string.IsNullOrEmpty(json))
+                {
+                    Console.WriteLine($"Unable to read file {file}");
+                    return null;
+                }
+            }
+            else
+            {
+                string path = config.BaseUrl + file;
+
+                using HttpClient client = new HttpClient();
+
+                try
+                {
+                    json = client.GetStringAsync(new Uri(path)).Result;
+
+                    // check for empty file
+                    if (string.IsNullOrEmpty(json))
+                    {
+                        Console.WriteLine($"Unable to read file {path}");
+                        return null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    return null;
+                }
             }
 
-            // read the file
-            string json = File.ReadAllText(file);
+            return LoadJson(json);
+        }
 
-            // check for empty file
-            if (string.IsNullOrEmpty(json))
-            {
-                Console.WriteLine($"Unable to read file {file}");
-                return null;
-            }
-
+        private List<Request> LoadJson(string json)
+        {
             try
             {
                 // deserialize json into a list (array)

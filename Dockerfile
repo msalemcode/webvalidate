@@ -13,8 +13,8 @@ FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build
 COPY src /src
 
 ### Run the unit tests
-WORKDIR /src/unit-tests
-RUN dotnet test --logger:trx
+WORKDIR /src/tests
+RUN dotnet test
 
 ### Build the release app
 WORKDIR /src/app
@@ -38,7 +38,8 @@ WORKDIR /app
 COPY --from=build /app .
 RUN mkdir -p /app/TestFiles && \
     cp *.json TestFiles && \
-    cp perfTargets.txt TestFiles
+    cp perfTargets.txt TestFiles && \
+    chown -R webv:webv /app
 
 WORKDIR /app/TestFiles
 

@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Globalization;
 using System.Net.Http;
 using System.Runtime.Serialization;
 
@@ -126,13 +125,26 @@ namespace CSE.WebValidate.Response
                 // deserialize the json into an IDictionary
                 IDictionary<string, object> dict = JsonConvert.DeserializeObject<ExpandoObject>(body);
 
+                // set to new so validation fails
+                if (dict == null)
+                {
+                    dict = new Dictionary<string, object>();
+                }
+
                 foreach (JsonProperty property in properties)
                 {
                     if (!string.IsNullOrEmpty(property.Field) && dict.ContainsKey(property.Field))
                     {
                         if (property.Validation != null)
                         {
-                            result.Add(Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field])));
+                            if (dict[property.Field] == null)
+                            {
+                                result.ValidationErrors.Add($"\tjson: Field is null: {property.Field}");
+                            }
+                            else
+                            {
+                                result.Add(Validate(property.Validation, JsonConvert.SerializeObject(dict[property.Field])));
+                            }
                         }
 
                         // null values check for the existance of the field in the payload
@@ -146,25 +158,25 @@ namespace CSE.WebValidate.Response
                                 double.TryParse(dict[property.Field].ToString(), out double d) &&
                                 (double)property.Value == d))
                             {
-                                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}"));
+                                result.ValidationErrors.Add($"\tjson: {property.Field}: {dict[property.Field]} : Expected: {property.Value}");
                             }
                         }
                     }
                     else
                     {
-                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: Field Not Found: {property.Field}"));
+                        result.ValidationErrors.Add($"\tjson: Field Not Found: {property.Field}");
                     }
                 }
             }
 
             catch (SerializationException se)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
+                result.ValidationErrors.Add($"\tException: {se.Message}");
             }
 
             catch (Exception ex)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {ex.Message}"));
+                result.ValidationErrors.Add($"\tException: {ex.Message}");
             }
 
             return result;
@@ -198,12 +210,12 @@ namespace CSE.WebValidate.Response
             }
             catch (SerializationException se)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {se.Message}"));
+                result.ValidationErrors.Add($"\tException: {se.Message}");
             }
 
             catch (Exception ex)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tException: {ex.Message}"));
+                result.ValidationErrors.Add($"\tException: {ex.Message}");
             }
 
             return result;
@@ -250,7 +262,7 @@ namespace CSE.WebValidate.Response
                     // check index in bounds
                     if (property.Index < 0 || property.Index >= documentList.Count)
                     {
-                        result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\byIndex: Index out of bounds: {property.Index}"));
+                        result.ValidationErrors.Add($"\byIndex: Index out of bounds: {property.Index}");
                         break;
                     }
 
@@ -283,7 +295,7 @@ namespace CSE.WebValidate.Response
                                 double.TryParse(documentList[(int)property.Index][property.Field].ToString(), out d) &&
                                 (double)property.Value == d))
                             {
-                                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {documentList[(int)property.Index][property.Field]} : Expected: {property.Value}"));
+                                result.ValidationErrors.Add($"\tjson: {property.Field}: {documentList[(int)property.Index][property.Field]} : Expected: {property.Value}");
                             }
                         }
                     }
@@ -292,7 +304,7 @@ namespace CSE.WebValidate.Response
                         // used for checking array of simple type
                         if (!property.Value.Equals(documentList[(int)property.Index]))
                         {
-                            result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tjson: {property.Field}: {documentList[(int)property.Index]} : Expected: {property.Value}"));
+                            result.ValidationErrors.Add($"\tjson: {property.Field}: {documentList[(int)property.Index]} : Expected: {property.Value}");
                         }
                     }
                 }
@@ -309,19 +321,19 @@ namespace CSE.WebValidate.Response
             // validate count
             if (jArray.Count != null && jArray.Count != documentList.Count)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tJsonArrayCount: {documentList.Count} Expected: {jArray.Count}"));
+                result.ValidationErrors.Add($"\tJsonArrayCount: {documentList.Count} Expected: {jArray.Count}");
             }
 
             // validate min count
             if (jArray.MinCount != null && jArray.MinCount > documentList.Count)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tMinJsonCount: {jArray.MinCount}  Actual: {documentList.Count}"));
+                result.ValidationErrors.Add($"\tMinJsonCount: {jArray.MinCount}  Actual: {documentList.Count}");
             }
 
             // validate max count
             if (jArray.MaxCount != null && jArray.MaxCount < documentList.Count)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tMaxJsonCount: {jArray.MaxCount}  Actual: {documentList.Count}"));
+                result.ValidationErrors.Add($"\tMaxJsonCount: {jArray.MaxCount}  Actual: {documentList.Count}");
             }
 
             return result;
@@ -335,7 +347,7 @@ namespace CSE.WebValidate.Response
             if (actual != expected)
             {
                 result.Failed = true;
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tStatusCode: {actual} Expected: {expected}"));
+                result.ValidationErrors.Add($"\tStatusCode: {actual} Expected: {expected}");
             }
 
             return result;
@@ -351,7 +363,7 @@ namespace CSE.WebValidate.Response
                 if (actual != null && !actual.StartsWith(expected, StringComparison.OrdinalIgnoreCase))
                 {
                     result.Failed = true;
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContentType: {actual} Expected: {expected}"));
+                    result.ValidationErrors.Add($"\tContentType: {actual} Expected: {expected}");
                 }
             }
 
@@ -374,7 +386,7 @@ namespace CSE.WebValidate.Response
             {
                 if (actual != v.Length)
                 {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tLength: Actual: {actual} Expected: {v.Length}"));
+                    result.ValidationErrors.Add($"\tLength: Actual: {actual} Expected: {v.Length}");
                 }
             }
 
@@ -383,7 +395,7 @@ namespace CSE.WebValidate.Response
             {
                 if (actual < v.MinLength)
                 {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tMinContentLength: Actual: {actual} Expected: {v.MinLength}"));
+                    result.ValidationErrors.Add($"\tMinContentLength: Actual: {actual} Expected: {v.MinLength}");
                 }
             }
 
@@ -392,7 +404,7 @@ namespace CSE.WebValidate.Response
             {
                 if (actual > v.MaxLength)
                 {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tMaxContentLength: Actual: {actual} Expected: {v.MaxLength}"));
+                    result.ValidationErrors.Add($"\tMaxContentLength: Actual: {actual} Expected: {v.MaxLength}");
                 }
             }
 
@@ -419,7 +431,7 @@ namespace CSE.WebValidate.Response
             // compare values
             if (body != exactMatch)
             {
-                result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tExactMatch: Actual : {body.PadRight(40).Substring(0, 40).Trim()} : Expected: {exactMatch.PadRight(40).Substring(0, 40).Trim()}"));
+                result.ValidationErrors.Add($"\tExactMatch: Actual : {body.PadRight(40).Substring(0, 40).Trim()} : Expected: {exactMatch.PadRight(40).Substring(0, 40).Trim()}");
             }
 
             return result;
@@ -447,7 +459,7 @@ namespace CSE.WebValidate.Response
                 // compare values
                 if (!body.Contains(c, StringComparison.InvariantCulture))
                 {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
+                    result.ValidationErrors.Add($"\tContains: {c.PadRight(40).Substring(0, 40).Trim()}");
                 }
             }
 
@@ -471,7 +483,7 @@ namespace CSE.WebValidate.Response
                 // compare values
                 if (body.Contains(c, StringComparison.InvariantCulture))
                 {
-                    result.ValidationErrors.Add(string.Format(CultureInfo.InvariantCulture, $"\tNotContains: {c.PadRight(40).Substring(0, 40).Trim()}"));
+                    result.ValidationErrors.Add($"\tNotContains: {c.PadRight(40).Substring(0, 40).Trim()}");
                 }
             }
 

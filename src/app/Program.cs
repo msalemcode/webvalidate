@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,101 +17,19 @@ namespace CSE.WebValidate
         /// <summary>
         /// Main entry point
         /// </summary>
-        /// <param name="args">Command Line Parms</param>
+        /// <param name="args">Command Line Parameters</param>
         public static async Task<int> Main(string[] args)
         {
-            List<string> cmd = MergeEnvVarIntoCommandArgs(args);
-
-            // build the System.CommandLine.RootCommand
-            RootCommand root = BuildRootCommand();
-
-            // parse the command line
-            ParseResult parse = root.Parse(cmd.ToArray());
-
-            if (parse.Errors.Count > 0)
-            {
-                return await root.InvokeAsync(cmd.ToArray()).ConfigureAwait(false);
-            }
-
             // add ctl-c handler
             AddControlCHandler();
 
-            // run the app
-            using Config cfg = Config.LoadFromCommandLine(parse);
-            return await App.Run(cfg).ConfigureAwait(false);
-        }
+            // build the System.CommandLine.RootCommand
+            RootCommand root = BuildRootCommand();
+            root.Handler = CommandHandler.Create((Config cfg) => App.Run(cfg));
 
-        /// <summary>
-        /// Combine env vars and command line values
-        /// </summary>
-        /// <param name="args">command line args</param>
-        /// <returns>string</returns>
-        public static List<string> MergeEnvVarIntoCommandArgs(string[] args)
-        {
-            if (args == null)
-            {
-                args = Array.Empty<string>();
-            }
+            if (args == null) args = Array.Empty<string>();
 
-            // convert array to list
-            List<string> cmd = new List<string>(args);
-
-            // environment variable to command line mapping
-            Dictionary<string, string> dict = EnvKeys.EnvVarToCommandLineDictionary();
-
-            // check each env var and add to command line if not exists
-            foreach (string s in dict.Keys)
-            {
-                string v = Environment.GetEnvironmentVariable(s);
-
-                // if env var exists
-                if (!string.IsNullOrEmpty(v))
-                {
-                    bool found = false;
-
-                    // split into an array
-                    string[] alias = dict[s].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    // check each command line param
-                    foreach (string k in alias)
-                    {
-                        if (cmd.Contains(k.Trim()))
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    // add if doesn't exist
-                    if (!found)
-                    {
-                        cmd.Add(alias[0]);
-                        cmd.Add(v);
-                    }
-                }
-            }
-
-            // files is a list<string>
-            if (!cmd.Contains("--files") && !cmd.Contains("-f"))
-            {
-                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvKeys.Files)))
-                {
-                    string[] files = Environment.GetEnvironmentVariable(EnvKeys.Files).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    if (files.Length > 0)
-                    {
-                        cmd.Add("--files");
-
-                        foreach (string f in files)
-                        {
-                            cmd.Add(f.Trim());
-                        }
-                    }
-                }
-            }
-
-            // return list
-            return cmd;
+            return await root.InvokeAsync(args).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -125,83 +45,23 @@ namespace CSE.WebValidate
                 TreatUnmatchedTokensAsErrors = true
             };
 
-            // create options with validators
-            Option serverOption = new Option(new string[] { "-s", "--server" }, "Server to test") { Argument = new Argument<string>(), Required = true };
-            serverOption.AddValidator(v =>
-            {
-                const string errorMessage = "--server must be 3 - 100 characters [a-z][0-9]";
-
-                if (v.Tokens == null ||
-                v.Tokens.Count != 1 ||
-                v.Tokens[0].Value == null ||
-                v.Tokens[0].Value.Length < 3 ||
-                v.Tokens[0].Value.Length > 100)
-                {
-                    return errorMessage;
-                }
-
-                return string.Empty;
-            });
-
-            Option filesOption = new Option(new string[] { "-f", "--files" }, "List of files to test") { Argument = new Argument<List<string>>(), Required = true };
-            filesOption.AddValidator(v =>
-            {
-                string ret = string.Empty;
-
-                if (v.Tokens.Count != 0)
-                {
-                    foreach (Token t in v.Tokens)
-                    {
-                        if (!CheckFileExists(t.Value))
-                        {
-                            if (string.IsNullOrEmpty(ret))
-                            {
-                                ret = "File not found: " + t.Value;
-                            }
-                            else
-                            {
-                                ret = ret.Replace("File ", "Files ", StringComparison.Ordinal);
-                                ret += ", " + t.Value;
-                            }
-                        }
-                    }
-                }
-
-                return ret;
-            });
-
-            Option timeoutOption = new Option(new string[] { "-t", "--timeout" }, "Request timeout (seconds)") { Argument = new Argument<int>(() => 30) };
-            timeoutOption.AddValidator(ValidateIntGTEZero);
-
-            Option sleepOption = new Option(new string[] { "-l", "--sleep" }, "Sleep (ms) between each request") { Argument = new Argument<int>() };
-            sleepOption.AddValidator(ValidateIntGTEZero);
-
-            Option durationOption = new Option(new string[] { "--duration" }, "Test duration (seconds)  (requires --run-loop)") { Argument = new Argument<int>(() => 0) };
-            durationOption.AddValidator(ValidateIntGTEZero);
-
-            Option maxConcurrentOption = new Option(new string[] { "--max-concurrent" }, "Max concurrent requests") { Argument = new Argument<int>(() => 100) };
-            maxConcurrentOption.AddValidator(ValidateIntGTEZero);
-
-            Option maxErrorsOption = new Option(new string[] { "--max-errors" }, "Max validation errors") { Argument = new Argument<int>(() => 10) };
-            maxErrorsOption.AddValidator(ValidateIntGTEZero);
-
-            root.AddOption(serverOption);
-            root.AddOption(filesOption);
-            root.AddOption(sleepOption);
-            root.AddOption(new Option(new string[] { "-v", "--verbose" }, "Display verbose results") { Argument = new Argument<bool>() });
-            root.AddOption(new Option(new string[] { "-r", "--run-loop" }, "Run test in an infinite loop") { Argument = new Argument<bool>(() => false) });
-            root.AddOption(new Option(new string[] { "--random" }, "Run requests randomly (requires --run-loop)") { Argument = new Argument<bool>(() => false) });
-            root.AddOption(durationOption);
-            root.AddOption(timeoutOption);
-            root.AddOption(maxConcurrentOption);
-            root.AddOption(maxErrorsOption);
-            root.AddOption(new Option(new string[] { "--telemetry-name" }, "App Insights application name") { Argument = new Argument<string>() });
-            root.AddOption(new Option(new string[] { "--telemetry-key" }, "App Insights key") { Argument = new Argument<string>() });
-            root.AddOption(new Option(new string[] { "-d", "--dry-run" }, "Validates configuration") { Argument = new Argument<bool>() });
+            root.AddOption(new Option<string>(new string[] { "-s", "--server" }, ParseString, true, "Server to test"));
+            root.AddOption(new Option<List<string>>(new string[] { "-f", "--files" }, ParseStringList, true, "List of files to test"));
+            root.AddOption(new Option<int>(new string[] { "-l", "--sleep" }, ParseInt, true, "Sleep (ms) between each request"));
+            root.AddOption(new Option<string>(new string[] { "-u", "--base-url" }, ParseString, true, "Base url for files"));
+            root.AddOption(new Option<bool>(new string[] { "-v", "--verbose" }, ParseBool, true, "Display verbose results"));
+            root.AddOption(new Option<bool>(new string[] { "-r", "--run-loop" }, ParseBool, true, "Run test in an infinite loop"));
+            root.AddOption(new Option<bool>(new string[] { "--random" }, ParseBool, true, "Run requests randomly (requires --run-loop)"));
+            root.AddOption(new Option<int>(new string[] { "--duration" }, ParseInt, true, "Test duration (seconds)  (requires --run-loop)"));
+            root.AddOption(new Option<int>(new string[] { "-t", "--timeout" }, ParseInt, true, "Request timeout (seconds)"));
+            root.AddOption(new Option<int>(new string[] { "--max-concurrent" }, ParseInt, true, "Max concurrent requests"));
+            root.AddOption(new Option<int>(new string[] { "--max-errors" }, ParseInt, true, "Max validation errors"));
+            root.AddOption(new Option<string>(new string[] { "--telemetry-name" }, ParseString, true, "App Insights application name"));
+            root.AddOption(new Option<string>(new string[] { "--telemetry-key" }, ParseString, true, "App Insights key"));
+            root.AddOption(new Option<bool>(new string[] { "-d", "--dry-run" }, "Validates configuration"));
 
             // these require access to --run-loop so are added at the root level
-            root.AddValidator(ValidateDuration);
-            root.AddValidator(ValidateRandom);
+            root.AddValidator(ValidateRunLoopDependencies);
             root.AddValidator(ValidateTelemetry);
 
             return root;
@@ -211,21 +71,10 @@ namespace CSE.WebValidate
         {
             const string nameMessage = "--telemetry-name must be 3 - 24 characters [a-z][0-9]";
             const string keyMessage = "--telemetry-key must be 36 characters 8[hex]-4[hex]-4[hex]-12[hex]";
+            const string bothMessage = "--telemetry-name and --telemetry-key must both be specified or omitted";
 
-            OptionResult name = null;
-            OptionResult key = null;
-
-            foreach (OptionResult c in result.Children)
-            {
-                if (c.Symbol.Name == "telemetry-name")
-                {
-                    name = c;
-                }
-                else if (c.Symbol.Name == "telemetry-key")
-                {
-                    key = c;
-                }
-            }
+            OptionResult name = result.Children.FirstOrDefault(c => c.Symbol.Name == "telemetry-name") as OptionResult;
+            OptionResult key = result.Children.FirstOrDefault(c => c.Symbol.Name == "telemetry-key") as OptionResult;
 
             // neither name or key is set
             if (name == null && key == null)
@@ -233,27 +82,36 @@ namespace CSE.WebValidate
                 return string.Empty;
             }
 
-            // both name and key have to be set
+            // both name and key must be set
             if (name == null || key == null)
             {
-                return "--telemetry-name and --telemetry-key must both be specified or omitted";
+                return bothMessage;
+            }
+
+            // get the values
+            string n = name.GetValueOrDefault<string>();
+            string k = key.GetValueOrDefault<string>();
+
+            // both are null is OK
+            if (n == null && k == null)
+            {
+                return string.Empty;
+            }
+
+            // both must be set
+            if (n == null || k == null)
+            {
+                return bothMessage;
             }
 
             // name must be 3-24 characters in length
-            if (name.Tokens == null ||
-            name.Tokens.Count != 1 ||
-            name.Tokens[0].Value == null ||
-            name.Tokens[0].Value.Length < 3 ||
-            name.Tokens[0].Value.Length > 24)
+            if (n.Length < 3 || n.Length > 24)
             {
                 return nameMessage;
             }
 
             // key must be 36 characters
-            if (key.Tokens == null ||
-                key.Tokens.Count != 1 ||
-                key.Tokens[0].Value == null ||
-                key.Tokens[0].Value.Length != 36)
+            if (k.Length != 36)
             {
                 return keyMessage;
             }
@@ -261,63 +119,181 @@ namespace CSE.WebValidate
             return string.Empty;
         }
 
-        // validate --duration based on --run-loop
-        static string ValidateDuration(CommandResult result)
+        // validate --duration and --random based on --run-loop
+        static string ValidateRunLoopDependencies(CommandResult result)
         {
-            OptionResult runLoop = null;
-            OptionResult duration = null;
+            OptionResult runLoopRes = result.Children.FirstOrDefault(c => c.Symbol.Name == "run-loop") as OptionResult;
+            OptionResult durationRes = result.Children.FirstOrDefault(c => c.Symbol.Name == "duration") as OptionResult;
+            OptionResult randomRes = result.Children.FirstOrDefault(c => c.Symbol.Name == "random") as OptionResult;
 
-            foreach (OptionResult c in result.Children)
+            bool runLoop = runLoopRes.GetValueOrDefault<bool>();
+            int? duration = durationRes.GetValueOrDefault<int?>();
+            bool random = randomRes.GetValueOrDefault<bool>();
+
+            if (duration != null && (int)duration > 0 && !runLoop)
             {
-                if (c.Symbol.Name == "duration")
-                {
-                    duration = c;
-                }
-                else if (c.Symbol.Name == "run-loop")
-                {
-                    runLoop = c;
-                }
+                return "--run-loop must be true to use --duration";
             }
 
-            if (runLoop == null || runLoop.Token == null || (runLoop.Tokens.Count > 0 && !bool.Parse(runLoop.Tokens[0].Value)))
+            if (random && !runLoop)
             {
-                if (duration != null && duration.Tokens != null && duration.Tokens.Count > 0 && int.TryParse(duration.Tokens[0].Value, out int d) && d > 0)
-                {
-                    return "--run-loop must be true to use --duration";
-                }
+                return "--run-loop must be true to use --random";
             }
 
             return string.Empty;
         }
 
-        // validate --random based on --run-loop
-        static string ValidateRandom(CommandResult result)
+        static string ParseString(ArgumentResult result)
         {
-            OptionResult runLoop = null;
-            OptionResult random = null;
-
-
-            foreach (OptionResult c in result.Children)
+            string name = result.Parent?.Symbol.Name.ToUpperInvariant().Replace('-', '_');
+            if (string.IsNullOrEmpty(name))
             {
-                if (c.Symbol.Name == "run-loop")
+                result.ErrorMessage = "result.Parent is null";
+                return null;
+            }
+
+            string val;
+
+            if (result.Tokens.Count == 0)
+            {
+                string env = Environment.GetEnvironmentVariable(name);
+
+                if (string.IsNullOrWhiteSpace(env))
                 {
-                    runLoop = c;
+                    if (name == "SERVER")
+                    {
+                        result.ErrorMessage = $"--{result.Parent.Symbol.Name} is required";
+                    }
+
+                    return null;
                 }
-                else if (c.Symbol.Name == "random")
+                else
                 {
-                    random = c;
+                    val = env.Trim();
+                }
+            }
+            else
+            {
+                val = result.Tokens[0].Value.Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(val))
+            {
+                if (name == "SERVER")
+                {
+                    result.ErrorMessage = $"--{result.Parent.Symbol.Name} is required";
+                }
+
+                return null;
+            }
+            else if (val.Length < 3)
+            {
+                result.ErrorMessage = $"--{result.Parent.Symbol.Name} must be at least 3 characters";
+                return null;
+            }
+            else if (val.Length > 100)
+            {
+                result.ErrorMessage = $"--{result.Parent.Symbol.Name} must be 100 characters or less";
+            }
+
+            return val;
+        }
+
+        static List<string> ParseStringList(ArgumentResult result)
+        {
+            string name = result.Parent?.Symbol.Name.ToUpperInvariant().Replace('-', '_');
+            if (string.IsNullOrEmpty(name))
+            {
+                result.ErrorMessage = "result.Parent is null";
+                return null;
+            }
+
+            List<string> val = new List<string>();
+
+            if (result.Tokens.Count == 0)
+            {
+                string env = Environment.GetEnvironmentVariable(name);
+
+                if (string.IsNullOrWhiteSpace(env))
+                {
+                    result.ErrorMessage = "--files is a required parameter";
+                    return null;
+                }
+
+                string[] files = env.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (string f in files)
+                {
+                    val.Add(f.Trim());
+                }
+            }
+            else
+            {
+                for (int i = 0; i < result.Tokens.Count; i++)
+                {
+                    val.Add(result.Tokens[i].Value.Trim());
                 }
             }
 
-            if (runLoop == null || runLoop.Token == null || (runLoop.Tokens.Count > 0 && !bool.Parse(runLoop.Tokens[0].Value)))
+            return val;
+        }
+
+        static bool ParseBool(ArgumentResult result)
+        {
+            string name = result.Parent?.Symbol.Name.ToUpperInvariant().Replace('-', '_');
+            if (string.IsNullOrEmpty(name))
             {
-                if (random != null && random.Token != null && random.Tokens != null && (random.Tokens.Count == 0 || bool.Parse(random.Tokens[0].Value)))
-                {
-                    return "--run-loop must be true to use --random";
-                }
+                result.ErrorMessage = "result.Parent is null";
+                return false;
             }
 
-            return string.Empty;
+            string errorMessage = $"--{result.Parent.Symbol.Name} must true or false";
+            bool val;
+
+            // bool options default to true if value not specified (ie -r and -r true)
+
+            if (result.Parent.Parent.Children.FirstOrDefault(c => c.Symbol.Name == result.Parent.Symbol.Name) is OptionResult res &&
+                !res.IsImplicit &&
+                result.Tokens.Count == 0)
+            {
+                return true;
+            }
+
+            // nothing to validate
+            if (result.Tokens.Count == 0)
+            {
+                string env = Environment.GetEnvironmentVariable(name);
+
+                if (!string.IsNullOrWhiteSpace(env))
+                {
+                    if (bool.TryParse(env, out val))
+                    {
+                        return val;
+                    }
+                    else
+                    {
+                        result.ErrorMessage = errorMessage;
+                        return false;
+                    }
+                }
+
+                if (result.Parent.Symbol.Name == "verbose" &&
+                    result.Parent.Parent.Children.FirstOrDefault(c => c.Symbol.Name == "run-loop") is OptionResult resRunLoop &&
+                    !resRunLoop.GetValueOrDefault<bool>())
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (!bool.TryParse(result.Tokens[0].Value, out val))
+            {
+                result.ErrorMessage = errorMessage;
+                return false;
+            }
+
+            return val;
         }
 
         /// <summary>
@@ -325,28 +301,69 @@ namespace CSE.WebValidate
         /// </summary>
         /// <param name="result">OptionResult</param>
         /// <returns>error message</returns>
-        static string ValidateIntGTEZero(OptionResult result)
+        static int ParseInt(ArgumentResult result)
         {
+            string name = result.Parent?.Symbol.Name.ToUpperInvariant().Replace('-', '_');
+            if (string.IsNullOrEmpty(name))
+            {
+                result.ErrorMessage = "result.Parent is null";
+                return -1;
+            }
+
+            string errorMessage = name + " must be an integer >= 0";
+            int val;
+
             // nothing to validate
-            if (result.Symbol == null || result.Token == null)
+            if (result.Tokens.Count == 0)
             {
-                return string.Empty;
+                string env = Environment.GetEnvironmentVariable(name);
+
+                if (string.IsNullOrWhiteSpace(env))
+                {
+                    return GetCommandDefaultValues(result);
+                }
+                else
+                {
+                    if (!int.TryParse(env, out val) || val < 0)
+                    {
+                        result.ErrorMessage = errorMessage;
+                        return -1;
+                    }
+
+                    return val;
+                }
             }
 
-            string errorMessage = result.Symbol.Name + " must be an integer >= 0";
-
-            if (result.Tokens == null || result.Tokens.Count != 1)
+            if (!int.TryParse(result.Tokens[0].Value, out val) || val < 0)
             {
-                return errorMessage;
+                result.ErrorMessage = errorMessage;
+                return -1;
             }
 
-            // system.commandline will handle the parsing error
-            if (!int.TryParse(result.Tokens[0].Value, out int i))
-            {
-                return string.Empty;
-            }
+            return val;
+        }
 
-            return i < 0 ? errorMessage : string.Empty;
+        static int GetCommandDefaultValues(ArgumentResult result)
+        {
+            switch (result.Parent.Symbol.Name)
+            {
+                case "max-errors":
+                    return 10;
+                case "max-concurrent":
+                    return 100;
+                case "sleep":
+                    // check run-loop
+                    if (result.Parent.Parent.Children.FirstOrDefault(c => c.Symbol.Name == "run-loop") is OptionResult res && res.GetValueOrDefault<bool>())
+                    {
+                        return 1000;
+                    }
+
+                    return 0;
+                case "timeout":
+                    return 30;
+                default:
+                    return 0;
+            }
         }
 
         static int DoDryRun(Config config)
@@ -354,11 +371,11 @@ namespace CSE.WebValidate
             // display the config
             Console.WriteLine("dry run");
             Console.WriteLine($"   Server          {config.Server}");
-            Console.WriteLine($"   Files (count)   {config.FileList.Count}");
+            Console.WriteLine($"   Files (count)   {config.Files.Count}");
             Console.WriteLine($"   Run Loop        {config.RunLoop}");
-            Console.WriteLine($"   Sleep           {config.SleepMs}");
+            Console.WriteLine($"   Sleep           {config.Sleep}");
             Console.WriteLine($"   Duration        {config.Duration}");
-            Console.WriteLine($"   Max Concurrent  {config.MaxConcurrentRequests}");
+            Console.WriteLine($"   Max Concurrent  {config.MaxConcurrent}");
             Console.WriteLine($"   Max Errors      {config.MaxErrors}");
             Console.WriteLine($"   Random          {config.Random}");
             Console.WriteLine($"   Timeout         {config.Timeout}");
@@ -373,9 +390,12 @@ namespace CSE.WebValidate
         {
             if (config == null)
             {
-                Console.WriteLine("Config is null");
+                Console.WriteLine("CommandOptions is null");
                 return -1;
             }
+
+            // set any missing values
+            config.SetDefaultValues();
 
             // don't run the test on a dry run
             if (config.DryRun)
@@ -384,17 +404,25 @@ namespace CSE.WebValidate
             }
 
             // create the test
-            using WebV webv = new CSE.WebValidate.WebV(config);
+            try
+            {
+                using WebV webv = new CSE.WebValidate.WebV(config);
 
-            if (config.RunLoop)
-            {
-                // run in a loop
-                return webv.RunLoop(config, TokenSource.Token);
+                if (config.RunLoop)
+                {
+                    // run in a loop
+                    return webv.RunLoop(config, TokenSource.Token);
+                }
+                else
+                {
+                    // run one iteration
+                    return await webv.RunOnce(config, TokenSource.Token).ConfigureAwait(false);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                // run one iteration
-                return await webv.RunOnce(config, TokenSource.Token).ConfigureAwait(false);
+                Console.WriteLine($"\n{ex}\n\nWebV:Exception:{ex.Message}");
+                return 1;
             }
         }
 
@@ -405,10 +433,12 @@ namespace CSE.WebValidate
         {
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e)
             {
+                const string ControlCMessage = "Ctl-C Pressed - Starting shutdown ...";
+
                 e.Cancel = true;
                 TokenSource.Cancel();
 
-                Console.WriteLine(Constants.ControlCMessage);
+                Console.WriteLine(ControlCMessage);
             };
         }
 
