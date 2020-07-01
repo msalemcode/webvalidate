@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
 
 namespace CSE.WebValidate
 {
@@ -405,7 +406,16 @@ namespace CSE.WebValidate
                 // add the body to the http request
                 if (!string.IsNullOrEmpty(request.Body))
                 {
-                    req.Content = new StringContent(request.Body);
+                    if (!string.IsNullOrEmpty(request.ContentMediaType))
+                    {
+                        req.Content = new StringContent(request.Body,Encoding.UTF8,request.ContentMediaType);
+                    }
+                    else
+                    {
+                        req.Content = new StringContent(request.Body);
+                    }
+
+                        
                 }
 
                 // process the response
